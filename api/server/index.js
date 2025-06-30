@@ -48,8 +48,14 @@ const startServer = async () => {
 
   await AppService(app);
 
-  const indexPath = path.join(app.locals.paths.dist, 'index.html');
-  const indexHTML = fs.readFileSync(indexPath, 'utf8');
+  // In development mode, we don't need to serve the frontend - Vite handles that
+  let indexHTML = '';
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (!isDevelopment) {
+    const indexPath = path.join(app.locals.paths.dist, 'index.html');
+    indexHTML = fs.readFileSync(indexPath, 'utf8');
+  }
 
   app.get('/health', (_req, res) => res.status(200).send('OK'));
 
@@ -68,8 +74,10 @@ const startServer = async () => {
     console.warn('Response compression has been disabled via DISABLE_COMPRESSION.');
   }
 
-  // Serve static assets with aggressive caching
-  app.use(staticCache(app.locals.paths.dist));
+  // Serve static assets with aggressive caching (only in production)
+  if (!isDevelopment) {
+    app.use(staticCache(app.locals.paths.dist));
+  }
   app.use(staticCache(app.locals.paths.fonts));
   app.use(staticCache(app.locals.paths.assets));
 
@@ -122,6 +130,13 @@ const startServer = async () => {
   app.use('/api/mcp', routes.mcp);
 
   app.use((req, res) => {
+    // In development mode, let Vite handle frontend routes
+    if (isDevelopment) {
+      return res.status(404).json({ 
+        error: 'Frontend route - should be handled by Vite dev server on port 3090' 
+      });
+    }
+
     res.set({
       'Cache-Control': process.env.INDEX_CACHE_CONTROL || 'no-cache, no-store, must-revalidate',
       Pragma: process.env.INDEX_PRAGMA || 'no-cache',

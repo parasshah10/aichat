@@ -1,7 +1,9 @@
 // file deepcode ignore NoRateLimitingForLogin: Rate limiting is handled by the `loginLimiter` middleware
 const express = require('express');
 const passport = require('passport');
-const { randomState } = require('openid-client');
+// const { randomState } = require('openid-client'); // Disabled due to ES module compatibility
+const crypto = require('crypto');
+const randomState = () => crypto.randomBytes(16).toString('hex');
 const {
   checkBan,
   logHeaders,
