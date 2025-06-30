@@ -3,7 +3,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { TConversation } from 'librechat-data-provider';
 import { OGDialog, Button, Input, Label, Checkbox, Dropdown } from '~/components/ui';
 import OGDialogTemplate from '~/components/ui/OGDialogTemplate';
-import { useLocalize, useExportConversation } from '~/hooks';
+import { useLocalize, useExportConversation, useCopyConversation } from '~/hooks';
+import { useScreenshot } from '~/hooks/ScreenshotContext';
 
 const TYPE_OPTIONS = [
   { value: 'screenshot', label: 'screenshot (.png)' },
@@ -27,9 +28,12 @@ export default function ExportModal({
   children?: React.ReactNode;
 }) {
   const localize = useLocalize();
+  const { captureScreenshot } = useScreenshot();
 
   const [filename, setFileName] = useState('');
-  const [type, setType] = useState<string>('screenshot');
+  const [type, setType] = useState<string>('markdown');
+  const [isCopying, setIsCopying] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
 
   const [includeOptions, setIncludeOptions] = useState<boolean | 'indeterminate'>(true);
   const [exportBranches, setExportBranches] = useState<boolean | 'indeterminate'>(false);
@@ -43,10 +47,12 @@ export default function ExportModal({
 
   useEffect(() => {
     setFileName(filenamify(String(conversation?.title ?? 'file')));
-    setType('screenshot');
+    setType('markdown');
     setIncludeOptions(true);
     setExportBranches(false);
     setRecursive(true);
+    setJustCopied(false);
+    setIsCopying(false);
   }, [conversation?.title, open]);
 
   const handleTypeChange = useCallback((newType: string) => {
@@ -55,6 +61,8 @@ export default function ExportModal({
     setExportBranches(branches);
     setIncludeOptions(options);
     setType(newType);
+    setJustCopied(false);
+    setIsCopying(false);
   }, []);
 
   const exportBranchesSupport = useMemo(
@@ -71,6 +79,70 @@ export default function ExportModal({
     exportBranches,
     recursive,
   });
+
+  const { copyConversation } = useCopyConversation({
+    conversation,
+    type,
+    includeOptions,
+    exportBranches,
+    recursive,
+  });
+
+  const copyScreenshotToClipboard = async () => {
+    try {
+      // Check if clipboard API supports images
+      if (!navigator.clipboard || !navigator.clipboard.write) {
+        throw new Error('Clipboard API not supported');
+      }
+
+      const dataUrl = await captureScreenshot();
+      
+      // Convert data URL to blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      
+      // Check if ClipboardItem is supported
+      if (!window.ClipboardItem) {
+        throw new Error('ClipboardItem not supported');
+      }
+      
+      // Copy image to clipboard
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob
+        })
+      ]);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to copy screenshot to clipboard:', error);
+      // For unsupported browsers, we could fall back to showing a message
+      // or automatically triggering a download instead
+      throw new Error('Image copying not supported in this browser. Please use Export instead.');
+    }
+  };
+
+  const handleCopy = async () => {
+    setIsCopying(true);
+    setJustCopied(false);
+    try {
+      if (type === 'screenshot') {
+        await copyScreenshotToClipboard();
+      } else {
+        await copyConversation();
+      }
+      setJustCopied(true);
+      // Show copied state briefly, then close modal
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 0); // Set to 0 for instant close, increase later if needed
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   return (
     <OGDialog open={open} onOpenChange={onOpenChange} triggerRef={triggerRef}>
@@ -171,8 +243,20 @@ export default function ExportModal({
         }
         buttons={
           <>
-            <Button onClick={exportConversation} variant="submit">
+            <Button onClick={exportConversation} variant="outline">
               {localize('com_endpoint_export')}
+            </Button>
+            <Button 
+              onClick={handleCopy} 
+              variant="submit"
+              disabled={isCopying || justCopied}
+            >
+              {justCopied 
+                ? localize('com_ui_copied_to_clipboard') 
+                : isCopying 
+                  ? 'Copying...' 
+                  : localize('com_ui_copy_to_clipboard')
+              }
             </Button>
           </>
         }
