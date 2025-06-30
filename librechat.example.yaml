@@ -7,8 +7,8 @@ version: 1.2.1
 # Cache settings: Set to true to enable caching
 cache: true
 
-# File strategy s3/firebase
-# fileStrategy: "s3"
+# File strategy: local/s3/firebase/azure_blob/cloudinary
+# fileStrategy: "cloudinary"
 
 # Custom interface configuration
 interface:

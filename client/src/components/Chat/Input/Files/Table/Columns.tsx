@@ -124,13 +124,21 @@ export const columns: ColumnDef<TFile>[] = [
               (value) =>
                 value === FileSources.local ||
                 value === FileSources.openai ||
-                value === FileSources.azure,
+                value === FileSources.azure ||
+                value === FileSources.cloudinary ||
+                value === FileSources.s3 ||
+                value === FileSources.firebase ||
+                value === FileSources.azure_blob,
             ),
           }}
           valueMap={{
             [FileSources.azure]: 'com_ui_azure',
             [FileSources.openai]: 'com_ui_openai',
             [FileSources.local]: 'com_ui_host',
+            [FileSources.cloudinary]: 'com_ui_cloudinary',
+            [FileSources.s3]: 'com_ui_s3',
+            [FileSources.firebase]: 'com_ui_firebase',
+            [FileSources.azure_blob]: 'com_ui_azure_blob',
           }}
         />
       );
@@ -150,6 +158,40 @@ export const columns: ColumnDef<TFile>[] = [
           <div className="flex flex-wrap items-center gap-2">
             <AzureMinimalIcon className="icon-sm text-cyan-700" />
             {'Azure'}
+          </div>
+        );
+      } else if (source === FileSources.cloudinary) {
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="icon-sm rounded bg-orange-500 text-white flex items-center justify-center">
+              <span className="text-xs font-bold">C</span>
+            </div>
+            {'Cloudinary'}
+          </div>
+        );
+      } else if (source === FileSources.s3) {
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="icon-sm rounded bg-orange-600 text-white flex items-center justify-center">
+              <span className="text-xs font-bold">S3</span>
+            </div>
+            {'S3'}
+          </div>
+        );
+      } else if (source === FileSources.firebase) {
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="icon-sm rounded bg-yellow-500 text-white flex items-center justify-center">
+              <span className="text-xs font-bold">F</span>
+            </div>
+            {'Firebase'}
+          </div>
+        );
+      } else if (source === FileSources.azure_blob) {
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <AzureMinimalIcon className="icon-sm text-cyan-700" />
+            {'Azure Blob'}
           </div>
         );
       }

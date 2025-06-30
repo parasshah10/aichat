@@ -298,15 +298,23 @@ const processFileURL = async ({ fileStrategy, userId, URL, fileName, basePath, c
 const processImageFile = async ({ req, res, metadata, returnFile = false }) => {
   const { file } = req;
   const source = req.app.locals.fileStrategy;
+  
+  logger.debug(`[processImageFile] Starting image processing...`);
+  logger.debug(`[processImageFile] File: ${file.originalname}, path: ${file.path}`);
+  logger.debug(`[processImageFile] Source: ${source}`);
+  logger.debug(`[processImageFile] Metadata:`, metadata);
+  
   const { handleImageUpload } = getStrategyFunctions(source);
   const { file_id, temp_file_id, endpoint } = metadata;
 
+  logger.debug(`[processImageFile] About to call handleImageUpload...`);
   const { filepath, bytes, width, height } = await handleImageUpload({
     req,
     file,
     file_id,
     endpoint,
   });
+  logger.debug(`[processImageFile] handleImageUpload completed successfully`);
 
   const result = await createFile(
     {

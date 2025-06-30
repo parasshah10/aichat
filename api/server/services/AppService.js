@@ -17,6 +17,7 @@ const {
 const { azureAssistantsDefaults, assistantsConfigSetup } = require('./start/assistants');
 const { initializeAzureBlobService } = require('./Files/Azure/initialize');
 const { initializeFirebase } = require('./Files/Firebase/initialize');
+const { initializeCloudinary } = require('./Files/Cloudinary/initialize');
 const loadCustomConfig = require('./Config/loadCustomConfig');
 const handleRateLimits = require('./Config/handleRateLimits');
 const { loadDefaultInterface } = require('./start/interface');
@@ -66,6 +67,8 @@ const AppService = async (app) => {
     initializeAzureBlobService();
   } else if (fileStrategy === FileSources.s3) {
     initializeS3();
+  } else if (fileStrategy === FileSources.cloudinary) {
+    initializeCloudinary();
   }
 
   /** @type {Record<string, FunctionTool>} */

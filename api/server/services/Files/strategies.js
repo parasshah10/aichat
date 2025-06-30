@@ -48,6 +48,17 @@ const {
   prepareAzureImageURL,
   processAzureAvatar,
 } = require('./Azure');
+const {
+  uploadFileToCloudinary,
+  saveCloudinaryBuffer,
+  saveURLToCloudinary,
+  getCloudinaryURL,
+  deleteCloudinaryFile,
+  getCloudinaryFileStream,
+  uploadImageToCloudinary,
+  prepareCloudinaryImage,
+  processCloudinaryAvatar,
+} = require('./Cloudinary');
 const { uploadOpenAIFile, deleteOpenAIFile, getOpenAIFileStream } = require('./OpenAI');
 const { getCodeOutputDownloadStream, uploadCodeEnvFile } = require('./Code');
 const { uploadVectors, deleteVectors } = require('./VectorDB');
@@ -114,6 +125,22 @@ const azureStrategy = () => ({
   processAvatar: processAzureAvatar,
   handleImageUpload: uploadImageToAzure,
   getDownloadStream: getAzureFileStream,
+});
+
+/**
+ * Cloudinary Storage Strategy Functions
+ *
+ * */
+const cloudinaryStrategy = () => ({
+  handleFileUpload: uploadFileToCloudinary,
+  saveURL: saveURLToCloudinary,
+  getFileURL: getCloudinaryURL,
+  deleteFile: deleteCloudinaryFile,
+  saveBuffer: saveCloudinaryBuffer,
+  prepareImagePayload: prepareCloudinaryImage,
+  processAvatar: processCloudinaryAvatar,
+  handleImageUpload: uploadImageToCloudinary,
+  getDownloadStream: getCloudinaryFileStream,
 });
 
 /**
@@ -258,6 +285,8 @@ const getStrategyFunctions = (fileSource) => {
     return openAIStrategy();
   } else if (fileSource === FileSources.azure_blob) {
     return azureStrategy();
+  } else if (fileSource === FileSources.cloudinary) {
+    return cloudinaryStrategy();
   } else if (fileSource === FileSources.vectordb) {
     return vectorStrategy();
   } else if (fileSource === FileSources.s3) {
