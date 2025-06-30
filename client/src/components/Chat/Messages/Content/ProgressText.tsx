@@ -1,5 +1,6 @@
 import * as Popover from '@radix-ui/react-popover';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import CancelledIcon from './CancelledIcon';
 import FinishedIcon from './FinishedIcon';
 import { Spinner } from '~/components';
@@ -14,7 +15,7 @@ const Wrapper = ({ popover, children }: { popover: boolean; children: React.Reac
       <div className={wrapperClass}>
         <Popover.Trigger asChild>
           <div
-            className="progress-text-content absolute left-0 top-0 overflow-visible whitespace-nowrap"
+            className="progress-text-content absolute left-0 top-0 overflow-visible"
             style={{ opacity: 1, transform: 'none' }}
             data-projection-id="78"
           >
@@ -28,7 +29,7 @@ const Wrapper = ({ popover, children }: { popover: boolean; children: React.Reac
   return (
     <div className={wrapperClass}>
       <div
-        className="progress-text-content absolute left-0 top-0 overflow-visible whitespace-nowrap"
+        className="progress-text-content absolute left-0 top-0 overflow-visible"
         style={{ opacity: 1, transform: 'none' }}
         data-projection-id="78"
       >
@@ -59,6 +60,9 @@ export default function ProgressText({
   isExpanded?: boolean;
   error?: boolean;
 }) {
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const textRef = useRef<HTMLSpanElement>(null);
+
   const getText = () => {
     if (error) {
       return finishedText;
@@ -83,6 +87,21 @@ export default function ProgressText({
   const icon = getIcon();
   const showShimmer = progress < 1 && !error;
 
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (textRef.current) {
+        const isCurrentlyOverflowing = textRef.current.scrollWidth > textRef.current.clientWidth;
+        if (isCurrentlyOverflowing !== isOverflowing) {
+          setIsOverflowing(isCurrentlyOverflowing);
+        }
+      }
+    };
+
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [text, isOverflowing]);
+
   return (
     <Wrapper popover={popover}>
       <button
@@ -95,7 +114,16 @@ export default function ProgressText({
         onClick={hasInput ? onClick : undefined}
       >
         {icon}
-        <span className={showShimmer ? 'shimmer' : ''}>{text}</span>
+        <span
+          ref={textRef}
+          className={cn(
+            showShimmer ? 'shimmer' : '',
+            isOverflowing ? 'text-xs' : 'text-sm',
+            'truncate',
+          )}
+        >
+          {text}
+        </span>
         {hasInput &&
           (isExpanded ? (
             <ChevronUp className="size-4 shrink-0 translate-y-[1px]" />
