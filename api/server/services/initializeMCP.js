@@ -5,24 +5,39 @@ const { getMCPManager, getFlowStateManager } = require('~/config');
 const { getCachedTools, setCachedTools } = require('./Config');
 const { getLogStores } = require('~/cache');
 
+let yamlConfiguredMCPs = null;
+
+/**
+ * Returns the MCP server configurations loaded from the YAML file.
+ * @returns {object | null} The YAML-configured MCP servers, or null if not initialized.
+ */
+function getYAMLConfiguredMCPs() {
+  return yamlConfiguredMCPs;
+}
+
 /**
  * Initialize MCP servers
  * @param {import('express').Application} app - Express app instance
  */
 async function initializeMCP(app) {
-  const mcpServers = app.locals.mcpConfig;
-  if (!mcpServers) {
+  const mcpServersFromApp = app.locals.mcpConfig;
+  if (!mcpServersFromApp) {
+    logger.info('No MCP servers found in app.locals.mcpConfig to initialize.');
     return;
   }
 
-  logger.info('Initializing MCP servers...');
+  // Store for later retrieval by other services (e.g., for merging with DB configs)
+  yamlConfiguredMCPs = JSON.parse(JSON.stringify(mcpServersFromApp)); // Deep copy
+
+  logger.info('Initializing MCP servers from YAML...');
   const mcpManager = getMCPManager();
   const flowsCache = getLogStores(CacheKeys.FLOWS);
   const flowManager = flowsCache ? getFlowStateManager(flowsCache) : null;
 
   try {
+    // Use the original mcpServersFromApp for initialization as it's the direct data
     await mcpManager.initializeMCP({
-      mcpServers,
+      mcpServers: mcpServersFromApp,
       flowManager,
       tokenMethods: {
         findToken,
@@ -32,6 +47,7 @@ async function initializeMCP(app) {
       },
     });
 
+    // Delete from app.locals after it has been processed and copied
     delete app.locals.mcpConfig;
     const availableTools = await getCachedTools();
 
@@ -57,4 +73,7 @@ async function initializeMCP(app) {
   }
 }
 
-module.exports = initializeMCP;
+module.exports = {
+  initializeMCP,
+  getYAMLConfiguredMCPs,
+};

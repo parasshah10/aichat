@@ -6,6 +6,8 @@ const { getLdapConfig } = require('~/server/services/Config/ldap');
 const { getProjectByName } = require('~/models/Project');
 const { isEnabled } = require('~/server/utils');
 const { getLogStores } = require('~/cache');
+const { getYAMLConfiguredMCPs } = require('~/server/services/initializeMCP');
+const { requireJwtAuth } = require('~/server/middleware');
 
 const router = express.Router();
 const emailLoginEnabled =
@@ -144,6 +146,19 @@ router.get('/', async function (req, res) {
   } catch (err) {
     logger.error('Error in startup config', err);
     return res.status(500).send({ error: err.message });
+  }
+});
+
+router.get('/yaml-mcp-servers', requireJwtAuth, async (req, res) => {
+  try {
+    const yamlMcpServers = getYAMLConfiguredMCPs();
+    if (!yamlMcpServers) {
+      return res.status(200).json({}); // Return empty object if not initialized or none exist
+    }
+    res.status(200).json(yamlMcpServers);
+  } catch (error) {
+    logger.error('[API_Config] Error fetching YAML MCP servers:', error);
+    res.status(500).json({ error: 'Failed to fetch YAML MCP server configurations.' });
   }
 });
 

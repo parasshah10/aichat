@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { MessageSquare, Command, DollarSign } from 'lucide-react';
+import { MessageSquare, Command, DollarSign, SettingsIcon as LucideSettingsIcon } from 'lucide-react';
 import { SettingsTabValues } from 'librechat-data-provider';
 import { useGetStartupConfig } from '~/data-provider';
 import type { TDialogProps } from '~/common';
@@ -23,6 +23,7 @@ import {
   Account,
   Balance,
   Personalization,
+  Servers,
 } from './SettingsTabs';
 import { useMediaQuery, useLocalize, TranslationKeys } from '~/hooks';
 import usePersonalizationAccess from '~/hooks/usePersonalizationAccess';
@@ -47,6 +48,7 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
       SettingsTabValues.DATA,
       ...(startupConfig?.balance?.enabled ? [SettingsTabValues.BALANCE] : []),
       SettingsTabValues.ACCOUNT,
+      SettingsTabValues.SERVERS, // Added SERVERS here
     ];
     const currentIndex = tabs.indexOf(activeTab);
 
@@ -113,6 +115,11 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
       value: SettingsTabValues.DATA,
       icon: <DataIcon />,
       label: 'com_nav_setting_data',
+    },
+     {
+      value: SettingsTabValues.SERVERS,
+      icon: <LucideSettingsIcon className="icon-sm" />,
+      label: 'com_settings_servers_management_title' as TranslationKeys, // Assuming this key will be added to localization files
     },
     ...(startupConfig?.balance?.enabled
       ? [
@@ -260,6 +267,9 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
                     )}
                     <Tabs.Content value={SettingsTabValues.ACCOUNT}>
                       <Account />
+                    </Tabs.Content>
+                    <Tabs.Content value={SettingsTabValues.SERVERS}>
+                      <Servers />
                     </Tabs.Content>
                   </div>
                 </Tabs.Root>

@@ -11,9 +11,10 @@ const {
   convertJsonSchemaToZod,
 } = require('librechat-data-provider');
 const { getMCPManager, getFlowStateManager } = require('~/config');
-const { findToken, createToken, updateToken } = require('~/models');
+const { findToken, createToken, updateToken, getMcpServerConfigsByUser } = require('~/models');
 const { getCachedTools } = require('./Config');
 const { getLogStores } = require('~/cache');
+const { getYAMLConfiguredMCPs } = require('./initializeMCP');
 
 /**
  * @param {object} params
@@ -132,9 +133,78 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
     throw new Error(`User ID not found on request. Cannot create tool for ${toolKey}.`);
   }
 
+  // ---- Logic for merging MCP configurations ----
+  const userId = req.user.id;
+  const yamlMcps = getYAMLConfiguredMCPs() || {};
+  let dbMcps = [];
+  try {
+    dbMcps = await getMcpServerConfigsByUser(userId);
+  } catch (err) {
+    logger.error(`[MCP][${serverName}][${toolName}] Error fetching DB MCP configs for user ${userId}:`, err);
+    // Decide if we should proceed with YAML only or throw. For now, proceed with YAML.
+  }
+
+  const mergedMcps = JSON.parse(JSON.stringify(yamlMcps)); // Deep copy
+  const forceYaml = process.env.LIBRECHAT_FORCE_YAML_MCP === 'true';
+
+  for (const dbMcp of dbMcps) {
+    if (!dbMcp.enabled) {
+      // If a server is explicitly disabled by the user, remove it from the list.
+      delete mergedMcps[dbMcp.name];
+      continue;
+    }
+
+    if (forceYaml && mergedMcps[dbMcp.name]) {
+      // YAML is forced, and this DB config would override a YAML one, so skip.
+      // However, still apply user's `disabledTools` from DB to the YAML config.
+      if (dbMcp.disabledTools && dbMcp.disabledTools.length > 0) {
+        if (!mergedMcps[dbMcp.name].disabledTools) {
+          mergedMcps[dbMcp.name].disabledTools = [];
+        }
+        const currentDisabled = new Set(mergedMcps[dbMcp.name].disabledTools);
+        dbMcp.disabledTools.forEach(tool => currentDisabled.add(tool));
+        mergedMcps[dbMcp.name].disabledTools = Array.from(currentDisabled);
+      }
+      // Also apply oauth and customUserVars from DB if YAML is forced, as these are user-specific credentials/settings
+      if (dbMcp.oauth) {
+        mergedMcps[dbMcp.name].oauth = { ...(mergedMcps[dbMcp.name].oauth || {}), ...dbMcp.oauth };
+      }
+      if (dbMcp.customUserVars) {
+        mergedMcps[dbMcp.name].customUserVars = { ...(mergedMcps[dbMcp.name].customUserVars || {}), ...dbMcp.customUserVars };
+      }
+      continue;
+    }
+    // Add or override with DB configuration.
+    // If dbMcp.name was in yamlMcps, it's an override. If not, it's a new server.
+    mergedMcps[dbMcp.name] = { ...mergedMcps[dbMcp.name], ...dbMcp };
+  }
+
+  const currentServerConfig = mergedMcps[serverName];
+
+  if (!currentServerConfig) {
+    logger.warn(
+      `[MCP][User: ${userId}][${serverName}][${toolName}] Tool's server configuration not found or is disabled after merge for toolKey: ${toolKey}. Tool will not be available.`,
+    );
+    return null; // Server config not found or disabled
+  }
+
+  // Check if the specific tool is disabled on this server
+  if (currentServerConfig.disabledTools && currentServerConfig.disabledTools.includes(toolName)) {
+    logger.warn(
+      `[MCP][User: ${userId}][${serverName}][${toolName}] Tool is specifically disabled on server ${serverName}. Tool will not be available.`,
+    );
+    return null;
+  }
+  // ---- End of merging MCP configurations ----
+
+  // The `currentServerConfig` (which is the merged one) should be used by `_call` if it needs
+  // to access specific server parameters like overridden timeouts or specific oauth details.
+  // For now, customUserVars are passed separately, and serverName is used by mcpManager to lookup its known config.
+
   /** @type {(toolArguments: Object | string, config?: GraphRunnableConfig) => Promise<unknown>} */
   const _call = async (toolArguments, config) => {
-    const userId = config?.configurable?.user?.id || config?.configurable?.user_id;
+    // userId here is from the Langchain config, typically matches req.user.id
+    const callUserId = config?.configurable?.user?.id || config?.configurable?.user_id || userId;
     /** @type {ReturnType<typeof createAbortHandler>} */
     let abortHandler = null;
     /** @type {AbortSignal} */
