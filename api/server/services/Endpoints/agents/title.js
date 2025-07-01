@@ -28,6 +28,29 @@ const addTitle = async (req, { text, response, client }) => {
       logger.error('Title error:', error);
     });
 
+    // Get full conversation history for better title generation - CURRENT BRANCH ONLY
+    const { getMessages } = require('~/models');
+    
+    // First get all messages to find the current branch
+    const allMessages = await getMessages({ conversationId: response.conversationId });
+    
+    // Build current conversation path by following parentMessageId chain
+    const messageMap = new Map();
+    allMessages.forEach(msg => messageMap.set(msg.messageId, msg));
+    
+    // Start from the latest message (the response we just generated)
+    const currentPath = [];
+    let currentMessageId = response.messageId;
+    
+    // Follow the chain backwards to build the current conversation path
+    while (currentMessageId && messageMap.has(currentMessageId)) {
+      const message = messageMap.get(currentMessageId);
+      currentPath.unshift(message); // Add to beginning to maintain chronological order
+      currentMessageId = message.parentMessageId;
+    }
+    
+    const messages = currentPath;
+
     let titlePromise;
     let abortController = new AbortController();
     if (client && typeof client.titleConvo === 'function') {
@@ -36,6 +59,7 @@ const addTitle = async (req, { text, response, client }) => {
           .titleConvo({
             text,
             abortController,
+            messages, // Pass full conversation history
           })
           .catch((error) => {
             logger.error('Client title error:', error);

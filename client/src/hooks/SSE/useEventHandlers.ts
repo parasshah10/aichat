@@ -261,7 +261,7 @@ export default function useEventHandlers({
       }
 
       // refresh title
-      if (genTitle && isNewConvo && requestMessage.parentMessageId === Constants.NO_PARENT) {
+      if (genTitle) {
         setTimeout(() => {
           genTitle.mutate({ conversationId: convoUpdate.conversationId as string });
         }, 2500);
@@ -483,13 +483,7 @@ export default function useEventHandlers({
       }
 
       /* Refresh title */
-      if (
-        genTitle &&
-        isNewConvo &&
-        !isTemporary &&
-        requestMessage &&
-        requestMessage.parentMessageId === Constants.NO_PARENT
-      ) {
+      if (genTitle && !isTemporary && requestMessage) {
         setTimeout(() => {
           genTitle.mutate({ conversationId: conversation.conversationId as string });
         }, 2500);

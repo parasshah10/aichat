@@ -992,7 +992,7 @@ class AgentClient extends BaseClient {
    * @param {string} params.text
    * @param {string} params.conversationId
    */
-  async titleConvo({ text, abortController }) {
+  async titleConvo({ text, abortController, messages = [] }) {
     if (!this.run) {
       throw new Error('Run not initialized');
     }
@@ -1066,10 +1066,51 @@ class AgentClient extends BaseClient {
     }
 
     try {
+      // Build conversation context from full message history if available
+      let conversationContext = text;
+      if (messages && messages.length > 0) {
+        const filteredMessages = messages.filter((msg) => {
+          // Check if message has content in either format
+          if (msg.text && msg.text.trim().length > 0) {
+            return true; // User message with text
+          }
+          if (msg.content && Array.isArray(msg.content)) {
+            return msg.content.some(item => item.type === 'text' && item.text && item.text.trim().length > 0);
+          }
+          return false;
+        });
+        
+        conversationContext = filteredMessages
+          .map((msg, index) => {
+            const role = msg.isCreatedByUser ? 'User' : 'AI';
+            
+            // Extract text based on message structure
+            let messageText = '';
+            if (msg.text && msg.text.trim()) {
+              // User messages use 'text' field
+              messageText = msg.text.trim();
+            } else if (msg.content && Array.isArray(msg.content)) {
+              // AI messages use 'content' array
+              messageText = msg.content
+                .filter(item => item.type === 'text' && item.text)
+                .map(item => item.text)
+                .join(' ')
+                .trim();
+            }
+            
+            return messageText ? `${role}: ${messageText}` : null;
+          })
+          .filter(Boolean) // Remove null entries
+          .join('\n\n');
+      }
+
+      console.log(`[DEBUG] About to call generateTitle with inputText:`, conversationContext.substring(0, 200) + '...');
+      console.log(`[DEBUG] contentParts:`, this.contentParts);
+      
       const titleResult = await this.run.generateTitle({
         provider,
-        inputText: text,
-        contentParts: this.contentParts,
+        inputText: conversationContext, // Use full conversation context
+        contentParts: [], // Don't pass contentParts to avoid duplication
         clientOptions,
         chainOptions: {
           signal: abortController.signal,
@@ -1080,6 +1121,8 @@ class AgentClient extends BaseClient {
           ],
         },
       });
+      
+      console.log(`[DEBUG] generateTitle returned:`, titleResult);
 
       const collectedUsage = collectedMetadata.map((item) => {
         let input_tokens, output_tokens;

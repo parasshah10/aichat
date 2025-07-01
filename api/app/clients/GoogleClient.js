@@ -902,12 +902,27 @@ class GoogleClient extends BaseClient {
     }
   }
 
-  async titleConvo({ text, responseText = '' }) {
+  async titleConvo({ text, responseText = '', messages = [] }) {
     let title = 'New Chat';
-    const convo = `||>User:
+    
+    // Build conversation context from full message history
+    let convo = '';
+    if (messages && messages.length > 0) {
+      // Use full conversation history for better context
+      convo = messages
+        .filter(msg => msg.text && msg.text.trim()) // Filter out empty messages
+        .map(msg => {
+          const role = msg.isCreatedByUser ? 'User' : 'Assistant';
+          return `||>${role}:\n"${truncateText(msg.text)}"`;
+        })
+        .join('\n');
+    } else {
+      // Fallback to just the latest pair if no messages provided
+      convo = `||>User:
 "${truncateText(text)}"
 ||>Response:
 "${JSON.stringify(truncateText(responseText))}"`;
+    }
 
     let { prompt: payload } = await this.buildMessages([
       {

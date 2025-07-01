@@ -15,7 +15,7 @@ const {
 const { createOnProgress } = require('~/server/utils');
 const { saveMessage } = require('~/models');
 
-const EditController = async (req, res, next, initializeClient) => {
+const EditController = async (req, res, next, initializeClient, addTitle) => {
   let {
     text,
     generation,
@@ -213,6 +213,24 @@ const EditController = async (req, res, next, initializeClient) => {
         { ...finalResponseMessage, user: userId },
         { context: 'api/server/controllers/EditController.js - response end' },
       );
+    }
+
+    // Add title generation for every edit/regeneration
+    if (addTitle) {
+      addTitle(req, {
+        text,
+        response: { ...finalResponseMessage, conversationId },
+        client,
+      })
+        .then(() => {
+          logger.debug('[EditController] Title generation started');
+        })
+        .catch((err) => {
+          logger.error('[EditController] Error in title generation', err);
+        })
+        .finally(() => {
+          logger.debug('[EditController] Title generation completed');
+        });
     }
 
     performCleanup();

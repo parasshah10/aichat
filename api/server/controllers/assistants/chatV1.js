@@ -605,14 +605,12 @@ const chatV1 = async (req, res) => {
     }
     await saveAssistantMessage(req, { ...responseMessage, model });
 
-    if (parentMessageId === Constants.NO_PARENT && !_thread_id) {
-      addTitle(req, {
-        text,
-        responseText: response.text,
-        conversationId,
-        client,
-      });
-    }
+    addTitle(req, {
+      text,
+      responseText: response.text,
+      conversationId,
+      client,
+    });
 
     await addThreadMetadata({
       openai,

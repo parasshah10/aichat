@@ -1,6 +1,6 @@
 const express = require('express');
 const EditController = require('~/server/controllers/EditController');
-const { initializeClient } = require('~/server/services/Endpoints/google');
+const { initializeClient, addTitle } = require('~/server/services/Endpoints/google');
 const {
   setHeaders,
   validateModel,
@@ -17,7 +17,7 @@ router.post(
   buildEndpointOption,
   setHeaders,
   async (req, res, next) => {
-    await EditController(req, res, next, initializeClient);
+    await EditController(req, res, next, initializeClient, addTitle);
   },
 );
 

@@ -19,7 +19,6 @@ const { PROXY } = process.env;
 const initializeClient = async ({ req, res, endpointOption, optionsOnly, overrideEndpoint }) => {
   const { key: expiresAt } = req.body;
   const endpoint = overrideEndpoint ?? req.body.endpoint;
-
   const endpointConfig = await getCustomEndpointConfig(endpoint);
   if (!endpointConfig) {
     throw new Error(`Config not found for the ${endpoint} custom endpoint.`);

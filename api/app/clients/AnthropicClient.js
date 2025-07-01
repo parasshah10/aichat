@@ -922,16 +922,31 @@ class AnthropicClient extends BaseClient {
    * @returns {Promise<string | 'New Chat'>} A promise that resolves to the generated conversation title.
    *                            In case of failure, it will return the default title, "New Chat".
    */
-  async titleConvo({ text, responseText = '' }) {
+  async titleConvo({ text, responseText = '', messages = [] }) {
     let title = 'New Chat';
     this.message_delta = undefined;
     this.message_start = undefined;
-    const convo = `<initial_message>
+    
+    // Build conversation context from full message history
+    let convo = '';
+    if (messages && messages.length > 0) {
+      // Use full conversation history for better context
+      convo = messages
+        .filter(msg => msg.text && msg.text.trim()) // Filter out empty messages
+        .map(msg => {
+          const role = msg.isCreatedByUser ? 'user' : 'assistant';
+          return `<${role}_message>\n${truncateText(msg.text)}\n</${role}_message>`;
+        })
+        .join('\n');
+    } else {
+      // Fallback to just the latest pair if no messages provided
+      convo = `<initial_message>
   ${truncateText(text)}
   </initial_message>
   <response>
   ${JSON.stringify(truncateText(responseText))}
   </response>`;
+    }
 
     const { ANTHROPIC_TITLE_MODEL } = process.env ?? {};
     const model = this.options.titleModel ?? ANTHROPIC_TITLE_MODEL ?? 'claude-3-haiku-20240307';

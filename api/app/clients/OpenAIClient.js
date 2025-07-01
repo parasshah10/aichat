@@ -699,7 +699,7 @@ class OpenAIClient extends BaseClient {
    * @returns {Promise<string | 'New Chat'>} A promise that resolves to the generated conversation title.
    *                            In case of failure, it will return the default title, "New Chat".
    */
-  async titleConvo({ text, conversationId, responseText = '' }) {
+  async titleConvo({ text, conversationId, responseText = '', messages = [] }) {
     this.conversationId = conversationId;
 
     if (this.options.attachments) {
@@ -707,10 +707,25 @@ class OpenAIClient extends BaseClient {
     }
 
     let title = 'New Chat';
-    const convo = `||>User:
+    
+    // Build conversation context from full message history
+    let convo = '';
+    if (messages && messages.length > 0) {
+      // Use full conversation history for better context
+      convo = messages
+        .filter(msg => msg.text && msg.text.trim()) // Filter out empty messages
+        .map(msg => {
+          const role = msg.isCreatedByUser ? 'User' : 'Assistant';
+          return `||>${role}:\n"${truncateText(msg.text)}"`;
+        })
+        .join('\n');
+    } else {
+      // Fallback to just the latest pair if no messages provided
+      convo = `||>User:
 "${truncateText(text)}"
 ||>Response:
 "${JSON.stringify(truncateText(responseText))}"`;
+    }
 
     const { OPENAI_TITLE_MODEL } = process.env ?? {};
 
