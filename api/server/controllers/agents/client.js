@@ -1080,7 +1080,10 @@ class AgentClient extends BaseClient {
           return false;
         });
         
-        conversationContext = filteredMessages
+        // HACK: Exclude the last AI message since it's provided in contentParts
+        const messagesForContext = filteredMessages.slice(0, -1);
+        
+        conversationContext = messagesForContext
           .map((msg, index) => {
             const role = msg.isCreatedByUser ? 'User' : 'AI';
             
@@ -1098,19 +1101,21 @@ class AgentClient extends BaseClient {
                 .trim();
             }
             
+            // HACK: Don't add role prefix to the first user message to avoid "User: User: hi"
+            if (index === 0 && msg.isCreatedByUser) {
+              return messageText || null;
+            }
+            
             return messageText ? `${role}: ${messageText}` : null;
           })
           .filter(Boolean) // Remove null entries
           .join('\n\n');
       }
 
-      console.log(`[DEBUG] About to call generateTitle with inputText:`, conversationContext.substring(0, 200) + '...');
-      console.log(`[DEBUG] contentParts:`, this.contentParts);
-      
       const titleResult = await this.run.generateTitle({
         provider,
         inputText: conversationContext, // Use full conversation context
-        contentParts: [], // Don't pass contentParts to avoid duplication
+        contentParts: this.contentParts, // Pass the actual AI response
         clientOptions,
         chainOptions: {
           signal: abortController.signal,
@@ -1121,8 +1126,6 @@ class AgentClient extends BaseClient {
           ],
         },
       });
-      
-      console.log(`[DEBUG] generateTitle returned:`, titleResult);
 
       const collectedUsage = collectedMetadata.map((item) => {
         let input_tokens, output_tokens;
