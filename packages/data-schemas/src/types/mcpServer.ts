@@ -1,5 +1,9 @@
 import { Document, Types } from 'mongoose';
-import { TokenExchangeMethodEnum } from './agents';
+
+export enum TokenExchangeMethodEnum {
+  DefaultPost = 'default_post',
+  BasicAuthHeader = 'basic_auth_header',
+}
 
 export interface IMCPServerTool {
   name: string;

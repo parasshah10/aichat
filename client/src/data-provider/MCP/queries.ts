@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { dataService } from '../data-service';
+import { dataService } from 'librechat-data-provider';
 import type { IMCPServer } from 'librechat-data-provider';
 
 export const useGetMCPServers = (filters?: {
@@ -21,8 +21,10 @@ export const useGetMCPServers = (filters?: {
         params.append('status', filters.status);
       }
 
-      const response = await dataService.get(`/api/mcp/servers?${params.toString()}`);
-      return response.servers as IMCPServer[];
+      // Temporary: Use direct fetch instead of dataService
+      const response = await fetch(`/api/mcp/servers?${params.toString()}`);
+      const data = await response.json();
+      return data.servers as IMCPServer[];
     },
   });
 };

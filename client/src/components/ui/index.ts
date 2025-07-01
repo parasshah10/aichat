@@ -14,6 +14,7 @@ export * from './Label';
 export * from './OriginalDialog';
 export * from './Prompt';
 export * from './QuestionMark';
+export * from './Select';
 export * from './Slider';
 export * from './Separator';
 export * from './InputCombobox';

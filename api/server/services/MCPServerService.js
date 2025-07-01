@@ -422,7 +422,7 @@ class MCPServerService {
   }
 
   /**
-   * Get YAML MCP configuration
+   * Get YAML MCP configuration (public method)
    */
   async getYamlMCPConfig() {
     try {

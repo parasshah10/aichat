@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { dataService } from '../data-service';
+import { dataService } from 'librechat-data-provider';
 import type { 
   CreateMCPServerParams, 
   UpdateMCPServerParams,

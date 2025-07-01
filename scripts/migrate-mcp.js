@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+require('dotenv').config();
+
 /**
  * MCP Database Migration Script
  * 
@@ -102,8 +104,8 @@ async function main() {
     process.exit(1);
   }
 
-  const connectionString = process.env.MONGO_URI || 'mongodb://localhost:27017';
-  const dbName = process.env.DB_NAME || 'librechat';
+  const connectionString = 'mongodb+srv://arcticaurora:arcticaurora@librechat.leugagg.mongodb.net/?retryWrites=true&w=majority&appName=librechat';
+  const dbName = 'LibreChat';
   const migrationsDir = path.join(__dirname, '../api/migrations/mcp');
 
   // Check if migrations directory exists

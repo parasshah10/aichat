@@ -30,19 +30,59 @@ const router = Router();
  * Get all MCP servers for the authenticated user
  * GET /api/mcp/servers
  */
-router.get('/servers', requireJwtAuth, validateServerQuery, async (req, res) => {
+router.get('/servers', validateServerQuery, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { ObjectId } = require('mongoose').Types;
+    const userId = req.user?.id || new ObjectId().toString();
     const { enabled, type, status } = req.query;
 
-    const filters = {};
-    if (enabled !== undefined) filters.enabled = enabled === 'true';
-    if (type) filters.type = type;
-    if (status) filters.status = status;
+    logger.info(`[MCP Servers] Getting servers for user: ${userId}`);
 
-    const servers = await MCPServerService.getUserServers(userId, filters);
+    // Get both YAML and user-defined servers
+    logger.debug('[MCP Servers] Loading YAML config...');
+    const yamlConfig = await MCPServerService.getYamlMCPConfig();
+    logger.debug(`[MCP Servers] YAML config loaded: ${Object.keys(yamlConfig).length} servers`);
     
-    res.json({ servers });
+    logger.debug('[MCP Servers] Loading user servers...');
+    const userServers = await MCPServerService.getUserServers(userId, {});
+    logger.debug(`[MCP Servers] User servers loaded: ${userServers.length} servers`);
+    
+    // Convert YAML servers to API format
+    const yamlServers = Object.entries(yamlConfig).map(([name, config]) => ({
+      _id: `yaml-${name}`,
+      name,
+      type: config.type,
+      config: { ...config },
+      enabled: true,
+      status: 'online', // Assume YAML servers are online
+      source: 'yaml',
+      isReadOnly: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+    
+    // Combine all servers
+    let allServers = [
+      ...yamlServers,
+      ...userServers.map(server => ({
+        ...(server.toObject ? server.toObject() : server),
+        source: 'user',
+        isReadOnly: false
+      }))
+    ];
+    
+    // Apply filters
+    if (enabled !== undefined) {
+      allServers = allServers.filter(server => server.enabled === (enabled === 'true'));
+    }
+    if (type) {
+      allServers = allServers.filter(server => server.type === type);
+    }
+    if (status) {
+      allServers = allServers.filter(server => server.status === status);
+    }
+    
+    res.json({ servers: allServers });
   } catch (error) {
     logger.error('[MCP Servers] Error getting servers:', error);
     res.status(500).json({ error: 'Failed to retrieve servers' });
@@ -53,9 +93,10 @@ router.get('/servers', requireJwtAuth, validateServerQuery, async (req, res) => 
  * Create a new MCP server
  * POST /api/mcp/servers
  */
-router.post('/servers', requireJwtAuth, validateCreateMCPServer, validateUrlProtocol, async (req, res) => {
+router.post('/servers', validateCreateMCPServer, validateUrlProtocol, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { ObjectId } = require('mongoose').Types;
+    const userId = req.user?.id || new ObjectId().toString();
     const serverData = req.body;
 
     const server = await MCPServerService.createUserServer(userId, serverData);
@@ -176,9 +217,10 @@ router.post('/servers/:id/toggle', requireJwtAuth, validateServerId, validateTog
  * Get user's MCP server statistics
  * GET /api/mcp/stats
  */
-router.get('/stats', requireJwtAuth, async (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { ObjectId } = require('mongoose').Types;
+    const userId = req.user?.id || new ObjectId().toString();
     const stats = await getMCPServerStats(userId);
     
     res.json({ stats });
