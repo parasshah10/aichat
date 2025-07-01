@@ -1473,12 +1473,12 @@ button {
 
 /* Narrow scrollbar for conversations list */
 .conversations-scrollbar {
-  margin-right: -0.25rem;
-  padding-right: 0.625rem;
+  padding-right: 0;
+  margin-right: 0;
 }
 
 .conversations-scrollbar::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 
 .conversations-scrollbar::-webkit-scrollbar-thumb {

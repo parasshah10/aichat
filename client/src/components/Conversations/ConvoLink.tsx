@@ -21,7 +21,7 @@ const ConvoLink: React.FC<ConvoLinkProps> = ({
   return (
     <div
       className={cn(
-        'flex grow items-center gap-2 overflow-hidden rounded-lg px-1',
+        'flex grow items-center gap-2 overflow-hidden rounded-lg pl-2 pr-1',
         isActiveConvo ? 'bg-surface-active-alt' : '',
       )}
       title={title ?? undefined}
@@ -47,7 +47,7 @@ const ConvoLink: React.FC<ConvoLinkProps> = ({
       </div>
       <div
         className={cn(
-          'absolute bottom-0 right-0 top-0 w-8 rounded-r-lg bg-gradient-to-l',
+          'absolute bottom-0 right-0 top-0 w-12 rounded-r-lg bg-gradient-to-l',
           isActiveConvo
             ? 'from-surface-active-alt'
             : 'from-surface-primary-alt from-0% to-transparent group-hover:from-surface-active-alt group-hover:from-40%',

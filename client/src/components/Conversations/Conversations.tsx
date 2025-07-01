@@ -32,7 +32,7 @@ const LoadingSpinner = memo(() => {
 const DateLabel: FC<{ groupName: string }> = memo(({ groupName }) => {
   const localize = useLocalize();
   return (
-    <div className="mt-2 pl-2 pt-1 text-text-secondary" style={{ fontSize: '0.7rem' }}>
+    <div className="mt-2 pl-2 pr-1 pt-1 text-text-secondary" style={{ fontSize: '0.7rem' }}>
       {localize(groupName as TranslationKeys) || groupName}
     </div>
   );
@@ -203,7 +203,7 @@ const Conversations: FC<ConversationsProps> = ({
           <span className="ml-2 text-text-primary">Loading...</span>
         </div>
       ) : (
-        <div className="flex-1 conversations-scrollbar mr-[-0.25rem] md:mr-[-0.375rem]">
+        <div className="flex-1">
           <AutoSizer>
             {({ width, height }) => (
               <List
