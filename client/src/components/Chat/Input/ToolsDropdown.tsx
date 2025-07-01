@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
-import { Globe, Settings, Settings2, TerminalSquareIcon } from 'lucide-react';
+import { Globe, Settings, Settings2 } from 'lucide-react';
 import type { MenuItemProps } from '~/common';
 import { Permissions, PermissionTypes, AuthType } from 'librechat-data-provider';
 import { TooltipAnchor, DropdownPopup } from '~/components';
@@ -23,12 +23,8 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     mcpSelect,
     fileSearch,
     startupConfig,
-    codeApiKeyForm,
-    codeInterpreter,
     searchApiKeyForm,
   } = useBadgeRowContext();
-  const { setIsDialogOpen: setIsCodeDialogOpen, menuTriggerRef: codeMenuTriggerRef } =
-    codeApiKeyForm;
   const { setIsDialogOpen: setIsSearchDialogOpen, menuTriggerRef: searchMenuTriggerRef } =
     searchApiKeyForm;
   const {
@@ -36,11 +32,6 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     setIsPinned: setIsSearchPinned,
     authData: webSearchAuthData,
   } = webSearch;
-  const {
-    isPinned: isCodePinned,
-    setIsPinned: setIsCodePinned,
-    authData: codeAuthData,
-  } = codeInterpreter;
   const { isPinned: isFileSearchPinned, setIsPinned: setIsFileSearchPinned } = fileSearch;
   const {
     mcpValues,
@@ -54,10 +45,6 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     permission: Permissions.USE,
   });
 
-  const canRunCode = useHasAccess({
-    permissionType: PermissionTypes.RUN_CODE,
-    permission: Permissions.USE,
-  });
 
   const showWebSearchSettings = useMemo(() => {
     const authTypes = webSearchAuthData?.authTypes ?? [];
@@ -65,20 +52,12 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     return !authTypes.every(([, authType]) => authType === AuthType.SYSTEM_DEFINED);
   }, [webSearchAuthData?.authTypes]);
 
-  const showCodeSettings = useMemo(
-    () => codeAuthData?.message !== AuthType.SYSTEM_DEFINED,
-    [codeAuthData?.message],
-  );
 
   const handleWebSearchToggle = useCallback(() => {
     const newValue = !webSearch.toggleState;
     webSearch.debouncedChange({ isChecked: newValue });
   }, [webSearch]);
 
-  const handleCodeInterpreterToggle = useCallback(() => {
-    const newValue = !codeInterpreter.toggleState;
-    codeInterpreter.debouncedChange({ isChecked: newValue });
-  }, [codeInterpreter]);
 
   const handleFileSearchToggle = useCallback(() => {
     const newValue = !fileSearch.toggleState;
@@ -184,59 +163,6 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
       });
     }
 
-    if (canRunCode) {
-      items.push({
-        onClick: handleCodeInterpreterToggle,
-        hideOnClick: false,
-        render: (props) => (
-          <div {...props}>
-            <div className="flex items-center gap-2">
-              <TerminalSquareIcon className="icon-md" />
-              <span>{localize('com_assistants_code_interpreter')}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {showCodeSettings && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCodeDialogOpen(true);
-                  }}
-                  ref={codeMenuTriggerRef}
-                  className={cn(
-                    'rounded p-1 transition-all duration-200',
-                    'hover:bg-surface-secondary hover:shadow-sm',
-                    'text-text-secondary hover:text-text-primary',
-                  )}
-                  aria-label="Configure code interpreter"
-                >
-                  <div className="h-4 w-4">
-                    <Settings className="h-4 w-4" />
-                  </div>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsCodePinned(!isCodePinned);
-                }}
-                className={cn(
-                  'rounded p-1 transition-all duration-200',
-                  'hover:bg-surface-secondary hover:shadow-sm',
-                  !isCodePinned && 'text-text-primary hover:text-text-primary',
-                )}
-                aria-label={isCodePinned ? 'Unpin' : 'Pin'}
-              >
-                <div className="h-4 w-4">
-                  <PinIcon unpin={isCodePinned} />
-                </div>
-              </button>
-            </div>
-          </div>
-        ),
-      });
-    }
 
     if (mcpServerNames && mcpServerNames.length > 0) {
       items.push({
@@ -259,28 +185,21 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
   }, [
     localize,
     mcpValues,
-    canRunCode,
     isMCPPinned,
-    isCodePinned,
     mcpPlaceholder,
     mcpServerNames,
     isSearchPinned,
     setIsMCPPinned,
     canUseWebSearch,
-    setIsCodePinned,
     handleMCPToggle,
-    showCodeSettings,
     setIsSearchPinned,
     isFileSearchPinned,
-    codeMenuTriggerRef,
-    setIsCodeDialogOpen,
     searchMenuTriggerRef,
     showWebSearchSettings,
     setIsFileSearchPinned,
     handleWebSearchToggle,
     setIsSearchDialogOpen,
     handleFileSearchToggle,
-    handleCodeInterpreterToggle,
   ]);
 
   const menuTrigger = (
