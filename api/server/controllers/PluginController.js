@@ -142,13 +142,16 @@ const getAvailableTools = async (req, res) => {
     const cache = getLogStores(CacheKeys.CONFIG_STORE);
     const cachedTools = await cache.get(CacheKeys.TOOLS);
     if (cachedTools) {
+      logger.debug(`[getAvailableTools] Returning ${cachedTools.length} cached tools`);
       res.status(200).json(cachedTools);
       return;
     }
+    logger.debug('[getAvailableTools] No cached tools found, rebuilding...');
 
     let pluginManifest = availableTools;
     const customConfig = await getCustomConfig();
     if (customConfig?.mcpServers != null) {
+      logger.debug('[getAvailableTools] MCP servers configured, loading MCP tools...');
       const mcpManager = getMCPManager();
       const flowsCache = getLogStores(CacheKeys.FLOWS);
       const flowManager = flowsCache ? getFlowStateManager(flowsCache) : null;
@@ -159,7 +162,10 @@ const getAvailableTools = async (req, res) => {
         serverToolsCallback,
         getServerTools,
       });
+      logger.info(`[getAvailableTools] Loaded ${mcpTools.length} MCP tools from ${Object.keys(customConfig.mcpServers).length} configured servers`);
       pluginManifest = [...mcpTools, ...pluginManifest];
+    } else {
+      logger.debug('[getAvailableTools] No MCP servers configured');
     }
 
     /** @type {TPlugin[]} */
@@ -220,6 +226,8 @@ const getAvailableTools = async (req, res) => {
     }
 
     const finalTools = filterUniquePlugins(toolsOutput);
+    const mcpToolsCount = finalTools.filter(tool => tool.pluginKey.includes(Constants.mcp_delimiter)).length;
+    logger.info(`[getAvailableTools] Returning ${finalTools.length} total tools (${mcpToolsCount} MCP tools)`);
     await cache.set(CacheKeys.TOOLS, finalTools);
     res.status(200).json(finalTools);
   } catch (error) {
