@@ -5,8 +5,322 @@ const { CacheKeys } = require('librechat-data-provider');
 const { requireJwtAuth } = require('~/server/middleware');
 const { getFlowStateManager } = require('~/config');
 const { getLogStores } = require('~/cache');
+const {
+  validateCreateMCPServer,
+  validateUpdateMCPServer,
+  validateServerId,
+  validateToolName,
+  validateToggle,
+  validateServerQuery,
+  validateUrlProtocol,
+} = require('~/server/middleware/validate/mcpServer');
+const {
+  getMCPServer,
+  getMCPServerStats,
+} = require('~/models');
+const MCPServerService = require('~/server/services/MCPServerService');
 
 const router = Router();
+
+// ============================================================================
+// USER-DEFINED MCP SERVER MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Get all MCP servers for the authenticated user
+ * GET /api/mcp/servers
+ */
+router.get('/servers', requireJwtAuth, validateServerQuery, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { enabled, type, status } = req.query;
+
+    const filters = {};
+    if (enabled !== undefined) filters.enabled = enabled === 'true';
+    if (type) filters.type = type;
+    if (status) filters.status = status;
+
+    const servers = await MCPServerService.getUserServers(userId, filters);
+    
+    res.json({ servers });
+  } catch (error) {
+    logger.error('[MCP Servers] Error getting servers:', error);
+    res.status(500).json({ error: 'Failed to retrieve servers' });
+  }
+});
+
+/**
+ * Create a new MCP server
+ * POST /api/mcp/servers
+ */
+router.post('/servers', requireJwtAuth, validateCreateMCPServer, validateUrlProtocol, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const serverData = req.body;
+
+    const server = await MCPServerService.createUserServer(userId, serverData);
+    
+    res.status(201).json({ server });
+  } catch (error) {
+    logger.error('[MCP Servers] Error creating server:', error);
+    
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Failed to create server' });
+  }
+});
+
+/**
+ * Get a specific MCP server
+ * GET /api/mcp/servers/:id
+ */
+router.get('/servers/:id', requireJwtAuth, validateServerId, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const server = await getMCPServer(id, userId);
+    
+    if (!server) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+
+    res.json({ server });
+  } catch (error) {
+    logger.error('[MCP Servers] Error getting server:', error);
+    res.status(500).json({ error: 'Failed to retrieve server' });
+  }
+});
+
+/**
+ * Update an MCP server
+ * PUT /api/mcp/servers/:id
+ */
+router.put('/servers/:id', requireJwtAuth, validateServerId, validateUpdateMCPServer, validateUrlProtocol, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Don't allow updating userId
+    delete updateData.userId;
+
+    const server = await MCPServerService.updateUserServer(id, userId, updateData);
+    
+    res.json({ server });
+  } catch (error) {
+    logger.error('[MCP Servers] Error updating server:', error);
+    
+    if (error.message.includes('Server not found')) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Failed to update server' });
+  }
+});
+
+/**
+ * Delete an MCP server
+ * DELETE /api/mcp/servers/:id
+ */
+router.delete('/servers/:id', requireJwtAuth, validateServerId, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    await MCPServerService.deleteUserServer(id, userId);
+    
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('[MCP Servers] Error deleting server:', error);
+    
+    if (error.message.includes('Server not found')) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    
+    res.status(500).json({ error: 'Failed to delete server' });
+  }
+});
+
+/**
+ * Toggle server enabled status
+ * POST /api/mcp/servers/:id/toggle
+ */
+router.post('/servers/:id/toggle', requireJwtAuth, validateServerId, validateToggle, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { enabled } = req.body;
+
+    const server = await MCPServerService.toggleUserServer(id, userId, enabled);
+    
+    res.json({ server });
+  } catch (error) {
+    logger.error('[MCP Servers] Error toggling server:', error);
+    
+    if (error.message.includes('Server not found')) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    
+    res.status(500).json({ error: 'Failed to toggle server' });
+  }
+});
+
+/**
+ * Get user's MCP server statistics
+ * GET /api/mcp/stats
+ */
+router.get('/stats', requireJwtAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const stats = await getMCPServerStats(userId);
+    
+    res.json({ stats });
+  } catch (error) {
+    logger.error('[MCP Servers] Error getting stats:', error);
+    res.status(500).json({ error: 'Failed to retrieve statistics' });
+  }
+});
+
+// ============================================================================
+// TOOL MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Get tools for a specific server
+ * GET /api/mcp/servers/:id/tools
+ */
+router.get('/servers/:id/tools', requireJwtAuth, validateServerId, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const server = await getMCPServer(id, userId);
+    
+    if (!server) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+
+    res.json({ 
+      tools: server.tools,
+      toolCount: server.toolCount,
+      serverName: server.name,
+      serverStatus: server.status
+    });
+  } catch (error) {
+    logger.error('[MCP Servers] Error getting tools:', error);
+    res.status(500).json({ error: 'Failed to retrieve tools' });
+  }
+});
+
+/**
+ * Toggle tool enabled status
+ * PUT /api/mcp/servers/:id/tools/:toolName/toggle
+ */
+router.put('/servers/:id/tools/:toolName/toggle', requireJwtAuth, validateServerId, validateToolName, validateToggle, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id, toolName } = req.params;
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled field must be a boolean' });
+    }
+
+    const server = await getMCPServer(id, userId);
+    
+    if (!server) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+
+    // Find and update the tool
+    const toolIndex = server.tools.findIndex(tool => tool.name === toolName);
+    if (toolIndex === -1) {
+      return res.status(404).json({ error: 'Tool not found' });
+    }
+
+    server.tools[toolIndex].enabled = enabled;
+    server.tools[toolIndex].lastUpdated = new Date();
+
+    const updatedServer = await updateMCPServerTools(id, userId, server.tools);
+    
+    logger.info(`[MCP Tools] Toggled tool '${toolName}' to ${enabled ? 'enabled' : 'disabled'} for server '${server.name}'`);
+    res.json({ 
+      tool: updatedServer.tools.find(t => t.name === toolName),
+      server: updatedServer
+    });
+  } catch (error) {
+    logger.error('[MCP Tools] Error toggling tool:', error);
+    res.status(500).json({ error: 'Failed to toggle tool' });
+  }
+});
+
+// ============================================================================
+// SERVER TESTING & CONNECTION ENDPOINTS
+// ============================================================================
+
+/**
+ * Test server connection
+ * POST /api/mcp/servers/:id/test
+ */
+router.post('/servers/:id/test', requireJwtAuth, validateServerId, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const testResult = await MCPServerService.testServerConnection(id, userId);
+    
+    res.json({
+      success: testResult.success,
+      status: testResult.success ? 'online' : 'error',
+      error: testResult.error,
+      tools: testResult.tools || [],
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('[MCP Test] Error testing server connection:', error);
+    
+    if (error.message.includes('Server not found')) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    
+    res.status(500).json({ error: 'Failed to test server connection' });
+  }
+});
+
+/**
+ * Refresh server tools
+ * POST /api/mcp/servers/:id/refresh-tools
+ */
+router.post('/servers/:id/refresh-tools', requireJwtAuth, validateServerId, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const result = await MCPServerService.refreshServerTools(id, userId);
+    
+    res.json(result);
+  } catch (error) {
+    logger.error('[MCP Tools] Error refreshing tools:', error);
+    
+    if (error.message.includes('Server not found')) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    
+    res.status(500).json({ error: 'Failed to refresh tools' });
+  }
+});
+
+
+// ============================================================================
+// OAUTH ENDPOINTS (EXISTING)
+// ============================================================================
 
 /**
  * Initiate OAuth flow

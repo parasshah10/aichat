@@ -22,6 +22,18 @@ const {
 } = require('./Message');
 const { getConvoTitle, getConvo, saveConvo, deleteConvos } = require('./Conversation');
 const { getPreset, getPresets, savePreset, deletePresets } = require('./Preset');
+const {
+  createMCPServer,
+  getMCPServers,
+  getMCPServer,
+  updateMCPServer,
+  deleteMCPServer,
+  updateMCPServerStatus,
+  updateMCPServerTools,
+  toggleMCPServer,
+  getMCPServersByStatus,
+  getMCPServerStats,
+} = require('./MCPServer');
 
 module.exports = {
   ...methods,
@@ -51,4 +63,15 @@ module.exports = {
   getPresets,
   savePreset,
   deletePresets,
+
+  createMCPServer,
+  getMCPServers,
+  getMCPServer,
+  updateMCPServer,
+  deleteMCPServer,
+  updateMCPServerStatus,
+  updateMCPServerTools,
+  toggleMCPServer,
+  getMCPServersByStatus,
+  getMCPServerStats,
 };
