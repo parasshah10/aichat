@@ -238,9 +238,9 @@ const HoverButtons = ({
       />
 
       {/* Feedback Buttons */}
-      {!isCreatedByUser && (
+      {/* {!isCreatedByUser && (
         <Feedback handleFeedback={handleFeedback} feedback={message.feedback} isLast={isLast} />
-      )}
+      )} */}
 
       {/* Regenerate Button */}
       {regenerateEnabled && (
