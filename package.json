@@ -71,7 +71,8 @@
     "b:test:api": "cd api && bun run b:test",
     "b:balance": "bun config/add-balance.js",
     "b:list-balances": "bun config/list-balances.js",
-    "reset-terms": "node config/reset-terms.js"
+    "reset-terms": "node config/reset-terms.js",
+    "postinstall": "patch-package"
   },
   "repository": {
     "type": "git",
@@ -109,6 +110,7 @@
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "lint-staged": "^15.4.3",
+    "patch-package": "^8.0.0",
     "prettier": "^3.5.0",
     "prettier-eslint": "^16.3.0",
     "prettier-plugin-tailwindcss": "^0.6.11",

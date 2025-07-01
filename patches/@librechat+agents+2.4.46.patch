@@ -1,0 +1,546 @@
+diff --git a/node_modules/@librechat/agents/dist/cjs/run.cjs b/node_modules/@librechat/agents/dist/cjs/run.cjs
+index 371d74e..d669169 100644
+--- a/node_modules/@librechat/agents/dist/cjs/run.cjs
++++ b/node_modules/@librechat/agents/dist/cjs/run.cjs
+@@ -172,38 +172,158 @@ class Run {
+             [_enum.Callback.TOOL_END]: this.createSystemCallback(clientCallbacks, _enum.Callback.TOOL_END),
+         };
+     }
+-    async generateTitle({ provider, inputText, contentParts, titlePrompt, clientOptions, chainOptions, skipLanguage, omitOptions = defaultOmitOptions, }) {
+-        const convoTemplate = prompts.PromptTemplate.fromTemplate('User: {input}\nAI: {output}');
+-        const response = contentParts
+-            .map((part) => {
+-            if (part?.type === 'text')
+-                return part.text;
+-            return '';
+-        })
++    async generateTitle({
++        provider,
++        inputText,
++        contentParts,
++        titlePrompt,
++        clientOptions,
++        chainOptions,
++        skipLanguage,
++        omitOptions = defaultOmitOptions,
++        messages = [], // Add messages parameter
++      }) {
++      
++        // OpenWebUI-style title generation prompt
++        const defaultTitlePrompt = `Create a concise, 3-6 word phrase with an emoji as a title for the above
++      conversation. Use the **entire** conversation as context, placing slightly higher emphasis based on recency.
++      Suitable Emojis for the summary can be used to enhance understanding but avoid quotation marks or special
++      formatting.
++      
++      ### Output:
++      JSON format: { "title": "your concise title here" }
++      
++      ### Examples:
++      - { "title": "📉 Stock Market Trends" }
++      - { "title": "🍪 Perfect Chocolate Chip Recipe" }
++      - { "title": "Evolution of Music Streaming" }
++      - { "title": "Remote Work Productivity Tips" }
++      - { "title": "Artificial Intelligence in Healthcare" }
++      - { "title": "🎮 Video Game Development Insights" }
++      
++      ### Chat History:
++      <chat_history>
++      {conversationContext}
++      </chat_history>`;
++      
++        // Build conversation context from full message history
++        let conversationContext = '';
++      
++        if (messages && messages.length > 0) {
++          const filteredMessages = messages.filter((msg) => {
++            // Check if message has content in either format
++            if (msg.text && msg.text.trim().length > 0) {
++              return true; // User message with text
++            }
++            if (msg.content && Array.isArray(msg.content)) {
++              return msg.content.some(item => item.type === 'text' && item.text && item.text.trim().length > 0);
++            }
++            return false;
++          });
++      
++          // Exclude the last AI message since it's provided in contentParts
++          const messagesForContext = filteredMessages.slice(0, -1);
++      
++          conversationContext = messagesForContext
++            .map((msg) => {
++              const role = msg.isCreatedByUser ? 'USER' : 'ASSISTANT';
++      
++              // Extract text based on message structure
++              let messageText = '';
++              if (msg.text && msg.text.trim()) {
++                // User messages use 'text' field
++                messageText = msg.text.trim();
++              } else if (msg.content && Array.isArray(msg.content)) {
++                // AI messages use 'content' array
++                messageText = msg.content
++                  .filter(item => item.type === 'text' && item.text)
++                  .map(item => item.text)
++                  .join(' ')
++                  .trim();
++              }
++      
++              return messageText ? `${role}: ${messageText}` : null;
++            })
++            .filter(Boolean) // Remove null entries
+             .join('\n');
+-        const convo = (await convoTemplate.invoke({ input: inputText, output: response })).value;
++        }
++      
++        // Add the current AI response from contentParts
++        const currentResponse = contentParts
++          .map((part) => {
++            if (part?.type === 'text') return part.text;
++            return '';
++          })
++          .join('\n');
++      
++        if (currentResponse) {
++          conversationContext += `\nASSISTANT: ${currentResponse}`;
++        }
++      
+         const model = this.Graph?.getNewModel({
+-            provider,
+-            omitOptions,
+-            clientOptions,
++          provider,
++          omitOptions,
++          clientOptions,
+         });
++      
+         if (!model) {
+-            return { language: '', title: '' };
+-        }
+-        if (llm.isOpenAILike(provider) &&
+-            (model instanceof openai.ChatOpenAI || model instanceof openai.AzureChatOpenAI)) {
+-            model.temperature = clientOptions
+-                ?.temperature;
+-            model.topP = clientOptions
+-                ?.topP;
+-            model.frequencyPenalty = clientOptions?.frequencyPenalty;
+-            model.presencePenalty = clientOptions?.presencePenalty;
+-            model.n = clientOptions
+-                ?.n;
+-        }
+-        const chain = await title.createTitleRunnable(model, titlePrompt);
+-        return (await chain.invoke({ convo, inputText, skipLanguage }, chainOptions));
+-    }
++          return { language: 'English', title: 'New Chat' };
++        }
++      
++        // Configure model parameters for OpenAI-like providers
++        if (
++          llm.isOpenAILike(provider) &&
++          (model instanceof openai.ChatOpenAI || model instanceof openai.AzureChatOpenAI)
++        ) {
++          model.temperature = clientOptions?.temperature;
++          model.topP = clientOptions?.topP;
++          model.frequencyPenalty = clientOptions?.frequencyPenalty;
++          model.presencePenalty = clientOptions?.presencePenalty;
++          model.n = clientOptions?.n;
++        }
++      
++        try {
++          // Use the custom prompt or fall back to default
++          const prompt = titlePrompt || defaultTitlePrompt;
++          const finalPrompt = prompt.replace('{conversationContext}', conversationContext);
++      
++          // Create the payload like OpenWebUI - single user message with full prompt
++          const payload = [
++            {
++              role: 'user',
++              content: finalPrompt
++            }
++          ];
++      
++          // Use the model directly to generate completion
++          const response = await model.invoke(payload, chainOptions);
++      
++          // Try to parse JSON response
++          let title = 'New Chat';
++          try {
++            const jsonMatch = response.content.match(/\{[^}]*"title"[^}]*\}/);
++            if (jsonMatch) {
++              const parsed = JSON.parse(jsonMatch[0]);
++              title = parsed.title || 'New Chat';
++            }
++          } catch (parseError) {
++            // Fallback: extract title from response text
++            const titleMatch = response.content.match(/"title":\s*"([^"]+)"/);
++            if (titleMatch) {
++              title = titleMatch[1];
++            }
++          }
++      
++          return {
++            language: 'English',
++            title: title
++          };
++      
++        } catch (error) {
++          console.error('Title generation failed:', error);
++          return { language: 'English', title: 'New Chat' };
++        }
++      }
+ }
+ 
+ exports.Run = Run;
+diff --git a/node_modules/@librechat/agents/dist/esm/run.mjs b/node_modules/@librechat/agents/dist/esm/run.mjs
+index a11f19c..7e5e0e8 100644
+--- a/node_modules/@librechat/agents/dist/esm/run.mjs
++++ b/node_modules/@librechat/agents/dist/esm/run.mjs
+@@ -170,38 +170,158 @@ class Run {
+             [Callback.TOOL_END]: this.createSystemCallback(clientCallbacks, Callback.TOOL_END),
+         };
+     }
+-    async generateTitle({ provider, inputText, contentParts, titlePrompt, clientOptions, chainOptions, skipLanguage, omitOptions = defaultOmitOptions, }) {
+-        const convoTemplate = PromptTemplate.fromTemplate('User: {input}\nAI: {output}');
+-        const response = contentParts
+-            .map((part) => {
+-            if (part?.type === 'text')
+-                return part.text;
+-            return '';
+-        })
++    async generateTitle({
++        provider,
++        inputText,
++        contentParts,
++        titlePrompt,
++        clientOptions,
++        chainOptions,
++        skipLanguage,
++        omitOptions = defaultOmitOptions,
++        messages = [], // Add messages parameter
++      }) {
++      
++        // OpenWebUI-style title generation prompt
++        const defaultTitlePrompt = `Create a concise, 3-6 word phrase with an emoji as a title for the above
++      conversation. Use the **entire** conversation as context, placing slightly higher emphasis based on recency.
++      Suitable Emojis for the summary can be used to enhance understanding but avoid quotation marks or special
++      formatting.
++      
++      ### Output:
++      JSON format: { "title": "your concise title here" }
++      
++      ### Examples:
++      - { "title": "📉 Stock Market Trends" }
++      - { "title": "🍪 Perfect Chocolate Chip Recipe" }
++      - { "title": "Evolution of Music Streaming" }
++      - { "title": "Remote Work Productivity Tips" }
++      - { "title": "Artificial Intelligence in Healthcare" }
++      - { "title": "🎮 Video Game Development Insights" }
++      
++      ### Chat History:
++      <chat_history>
++      {conversationContext}
++      </chat_history>`;
++      
++        // Build conversation context from full message history
++        let conversationContext = '';
++      
++        if (messages && messages.length > 0) {
++          const filteredMessages = messages.filter((msg) => {
++            // Check if message has content in either format
++            if (msg.text && msg.text.trim().length > 0) {
++              return true; // User message with text
++            }
++            if (msg.content && Array.isArray(msg.content)) {
++              return msg.content.some(item => item.type === 'text' && item.text && item.text.trim().length > 0);
++            }
++            return false;
++          });
++      
++          // Exclude the last AI message since it's provided in contentParts
++          const messagesForContext = filteredMessages.slice(0, -1);
++      
++          conversationContext = messagesForContext
++            .map((msg) => {
++              const role = msg.isCreatedByUser ? 'USER' : 'ASSISTANT';
++      
++              // Extract text based on message structure
++              let messageText = '';
++              if (msg.text && msg.text.trim()) {
++                // User messages use 'text' field
++                messageText = msg.text.trim();
++              } else if (msg.content && Array.isArray(msg.content)) {
++                // AI messages use 'content' array
++                messageText = msg.content
++                  .filter(item => item.type === 'text' && item.text)
++                  .map(item => item.text)
++                  .join(' ')
++                  .trim();
++              }
++      
++              return messageText ? `${role}: ${messageText}` : null;
++            })
++            .filter(Boolean) // Remove null entries
+             .join('\n');
+-        const convo = (await convoTemplate.invoke({ input: inputText, output: response })).value;
++        }
++      
++        // Add the current AI response from contentParts
++        const currentResponse = contentParts
++          .map((part) => {
++            if (part?.type === 'text') return part.text;
++            return '';
++          })
++          .join('\n');
++      
++        if (currentResponse) {
++          conversationContext += `\nASSISTANT: ${currentResponse}`;
++        }
++      
+         const model = this.Graph?.getNewModel({
+-            provider,
+-            omitOptions,
+-            clientOptions,
++          provider,
++          omitOptions,
++          clientOptions,
+         });
++      
+         if (!model) {
+-            return { language: '', title: '' };
+-        }
+-        if (isOpenAILike(provider) &&
+-            (model instanceof ChatOpenAI$1 || model instanceof AzureChatOpenAI$1)) {
+-            model.temperature = clientOptions
+-                ?.temperature;
+-            model.topP = clientOptions
+-                ?.topP;
+-            model.frequencyPenalty = clientOptions?.frequencyPenalty;
+-            model.presencePenalty = clientOptions?.presencePenalty;
+-            model.n = clientOptions
+-                ?.n;
+-        }
+-        const chain = await createTitleRunnable(model, titlePrompt);
+-        return (await chain.invoke({ convo, inputText, skipLanguage }, chainOptions));
+-    }
++          return { language: 'English', title: 'New Chat' };
++        }
++      
++        // Configure model parameters for OpenAI-like providers
++        if (
++          llm.isOpenAILike(provider) &&
++          (model instanceof openai.ChatOpenAI || model instanceof openai.AzureChatOpenAI)
++        ) {
++          model.temperature = clientOptions?.temperature;
++          model.topP = clientOptions?.topP;
++          model.frequencyPenalty = clientOptions?.frequencyPenalty;
++          model.presencePenalty = clientOptions?.presencePenalty;
++          model.n = clientOptions?.n;
++        }
++      
++        try {
++          // Use the custom prompt or fall back to default
++          const prompt = titlePrompt || defaultTitlePrompt;
++          const finalPrompt = prompt.replace('{conversationContext}', conversationContext);
++      
++          // Create the payload like OpenWebUI - single user message with full prompt
++          const payload = [
++            {
++              role: 'user',
++              content: finalPrompt
++            }
++          ];
++      
++          // Use the model directly to generate completion
++          const response = await model.invoke(payload, chainOptions);
++      
++          // Try to parse JSON response
++          let title = 'New Chat';
++          try {
++            const jsonMatch = response.content.match(/\{[^}]*"title"[^}]*\}/);
++            if (jsonMatch) {
++              const parsed = JSON.parse(jsonMatch[0]);
++              title = parsed.title || 'New Chat';
++            }
++          } catch (parseError) {
++            // Fallback: extract title from response text
++            const titleMatch = response.content.match(/"title":\s*"([^"]+)"/);
++            if (titleMatch) {
++              title = titleMatch[1];
++            }
++          }
++      
++          return {
++            language: 'English',
++            title: title
++          };
++      
++        } catch (error) {
++          console.error('Title generation failed:', error);
++          return { language: 'English', title: 'New Chat' };
++        }
++      }
+ }
+ 
+ export { Run, defaultOmitOptions };
+diff --git a/node_modules/@librechat/agents/src/run.ts b/node_modules/@librechat/agents/src/run.ts
+index dc9350b..227a764 100644
+--- a/node_modules/@librechat/agents/src/run.ts
++++ b/node_modules/@librechat/agents/src/run.ts
+@@ -256,27 +256,96 @@ export class Run<T extends t.BaseGraphState> {
+     chainOptions,
+     skipLanguage,
+     omitOptions = defaultOmitOptions,
+-  }: t.RunTitleOptions): Promise<{ language: string; title: string }> {
+-    const convoTemplate = PromptTemplate.fromTemplate(
+-      'User: {input}\nAI: {output}'
+-    );
+-    const response = contentParts
++    messages = [], // Add messages parameter
++  }: t.RunTitleOptions & { messages?: any[] }): Promise<{ language: string; title: string }> {
++  
++    // OpenWebUI-style title generation prompt
++    const defaultTitlePrompt = `Create a concise, 3-6 word phrase with an emoji as a title for the above
++  conversation. Use the **entire** conversation as context, placing slightly higher emphasis based on recency.
++  Suitable Emojis for the summary can be used to enhance understanding but avoid quotation marks or special
++  formatting.
++  
++  ### Output:
++  JSON format: { "title": "your concise title here" }
++  
++  ### Examples:
++  - { "title": "📉 Stock Market Trends" }
++  - { "title": "🍪 Perfect Chocolate Chip Recipe" }
++  - { "title": "Evolution of Music Streaming" }
++  - { "title": "Remote Work Productivity Tips" }
++  - { "title": "Artificial Intelligence in Healthcare" }
++  - { "title": "🎮 Video Game Development Insights" }
++  
++  ### Chat History:
++  <chat_history>
++  {conversationContext}
++  </chat_history>`;
++  
++    // Build conversation context from full message history
++    let conversationContext = '';
++  
++    if (messages && messages.length > 0) {
++      const filteredMessages = messages.filter((msg) => {
++        // Check if message has content in either format
++        if (msg.text && msg.text.trim().length > 0) {
++          return true; // User message with text
++        }
++        if (msg.content && Array.isArray(msg.content)) {
++          return msg.content.some(item => item.type === 'text' && item.text && item.text.trim().length > 0);
++        }
++        return false;
++      });
++  
++      // Exclude the last AI message since it's provided in contentParts
++      const messagesForContext = filteredMessages.slice(0, -1);
++  
++      conversationContext = messagesForContext
++        .map((msg) => {
++          const role = msg.isCreatedByUser ? 'USER' : 'ASSISTANT';
++  
++          // Extract text based on message structure
++          let messageText = '';
++          if (msg.text && msg.text.trim()) {
++            // User messages use 'text' field
++            messageText = msg.text.trim();
++          } else if (msg.content && Array.isArray(msg.content)) {
++            // AI messages use 'content' array
++            messageText = msg.content
++              .filter(item => item.type === 'text' && item.text)
++              .map(item => item.text)
++              .join(' ')
++              .trim();
++          }
++  
++          return messageText ? `${role}: ${messageText}` : null;
++        })
++        .filter(Boolean) // Remove null entries
++        .join('\n');
++    }
++  
++    // Add the current AI response from contentParts
++    const currentResponse = contentParts
+       .map((part) => {
+         if (part?.type === 'text') return part.text;
+         return '';
+       })
+       .join('\n');
+-    const convo = (
+-      await convoTemplate.invoke({ input: inputText, output: response })
+-    ).value;
++  
++    if (currentResponse) {
++      conversationContext += `\nASSISTANT: ${currentResponse}`;
++    }
++  
+     const model = this.Graph?.getNewModel({
+       provider,
+       omitOptions,
+       clientOptions,
+     });
++  
+     if (!model) {
+-      return { language: '', title: '' };
++      return { language: 'English', title: 'New Chat' };
+     }
++  
++    // Configure model parameters for OpenAI-like providers
+     if (
+       isOpenAILike(provider) &&
+       (model instanceof ChatOpenAI || model instanceof AzureChatOpenAI)
+@@ -294,10 +363,46 @@ export class Run<T extends t.BaseGraphState> {
+       model.n = (clientOptions as t.OpenAIClientOptions | undefined)
+         ?.n as number;
+     }
+-    const chain = await createTitleRunnable(model, titlePrompt);
+-    return (await chain.invoke(
+-      { convo, inputText, skipLanguage },
+-      chainOptions
+-    )) as { language: string; title: string };
++  
++    try {
++      // Use the custom prompt or fall back to default
++      const prompt = titlePrompt || defaultTitlePrompt;
++      const finalPrompt = prompt.replace('{conversationContext}', conversationContext);
++  
++      // Create the payload like OpenWebUI - single user message with full prompt
++      const payload = [
++        {
++          role: 'user',
++          content: finalPrompt
++        }
++      ];
++  
++      // Use the model directly to generate completion
++      const response = await model.invoke(payload, chainOptions);
++  
++      // Try to parse JSON response
++      let title = 'New Chat';
++      try {
++        const jsonMatch = response.content.match(/\{[^}]*"title"[^}]*\}/);
++        if (jsonMatch) {
++          const parsed = JSON.parse(jsonMatch[0]);
++          title = parsed.title || 'New Chat';
++        }
++      } catch (parseError) {
++        // Fallback: extract title from response text
++        const titleMatch = response.content.match(/"title":\s*"([^"]+)"/);
++        if (titleMatch) {
++          title = titleMatch[1];
++        }
++      }
++  
++      return {
++        language: 'English',
++        title: title
++      };
++  
++    } catch (error) {
++      console.error('Title generation failed:', error);
++      return { language: 'English', title: 'New Chat' };
++    }
+   }
+\ No newline at end of file
+-}

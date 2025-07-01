@@ -1066,56 +1066,11 @@ class AgentClient extends BaseClient {
     }
 
     try {
-      // Build conversation context from full message history if available
-      let conversationContext = text;
-      if (messages && messages.length > 0) {
-        const filteredMessages = messages.filter((msg) => {
-          // Check if message has content in either format
-          if (msg.text && msg.text.trim().length > 0) {
-            return true; // User message with text
-          }
-          if (msg.content && Array.isArray(msg.content)) {
-            return msg.content.some(item => item.type === 'text' && item.text && item.text.trim().length > 0);
-          }
-          return false;
-        });
-        
-        // HACK: Exclude the last AI message since it's provided in contentParts
-        const messagesForContext = filteredMessages.slice(0, -1);
-        
-        conversationContext = messagesForContext
-          .map((msg, index) => {
-            const role = msg.isCreatedByUser ? 'User' : 'AI';
-            
-            // Extract text based on message structure
-            let messageText = '';
-            if (msg.text && msg.text.trim()) {
-              // User messages use 'text' field
-              messageText = msg.text.trim();
-            } else if (msg.content && Array.isArray(msg.content)) {
-              // AI messages use 'content' array
-              messageText = msg.content
-                .filter(item => item.type === 'text' && item.text)
-                .map(item => item.text)
-                .join(' ')
-                .trim();
-            }
-            
-            // HACK: Don't add role prefix to the first user message to avoid "User: User: hi"
-            if (index === 0 && msg.isCreatedByUser) {
-              return messageText || null;
-            }
-            
-            return messageText ? `${role}: ${messageText}` : null;
-          })
-          .filter(Boolean) // Remove null entries
-          .join('\n\n');
-      }
-
       const titleResult = await this.run.generateTitle({
         provider,
-        inputText: conversationContext, // Use full conversation context
-        contentParts: this.contentParts, // Pass the actual AI response
+        inputText: text, // Just pass the original text
+        contentParts: this.contentParts,
+        messages, // Pass the messages array to generateTitle
         clientOptions,
         chainOptions: {
           signal: abortController.signal,
