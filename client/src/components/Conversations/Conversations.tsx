@@ -203,7 +203,7 @@ const Conversations: FC<ConversationsProps> = ({
           <span className="ml-2 text-text-primary">Loading...</span>
         </div>
       ) : (
-        <div className="flex-1">
+        <div className="flex-1 conversations-scrollbar mr-[-0.25rem] md:mr-[-0.375rem]">
           <AutoSizer>
             {({ width, height }) => (
               <List
@@ -215,7 +215,7 @@ const Conversations: FC<ConversationsProps> = ({
                 rowHeight={getRowHeight}
                 rowRenderer={rowRenderer}
                 overscanRowCount={10}
-                className="outline-none"
+                className="outline-none conversations-scrollbar"
                 style={{ outline: 'none' }}
                 role="list"
                 aria-label="Conversations"

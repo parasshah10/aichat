@@ -1471,6 +1471,36 @@ button {
   border-radius: 9999px;
 }
 
+/* Narrow scrollbar for conversations list */
+.conversations-scrollbar {
+  margin-right: -0.25rem;
+  padding-right: 0.625rem;
+}
+
+.conversations-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.conversations-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+  border: none;
+}
+
+.dark .conversations-scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsla(0, 0%, 100%, 0.12);
+}
+
+.conversations-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+  border-radius: 2px;
+  margin: 0;
+}
+
+.conversations-scrollbar::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
 .scrollbar-transparent::-webkit-scrollbar-thumb {
   background-color: transparent;
 }
