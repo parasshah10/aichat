@@ -27,6 +27,10 @@ export class MCPManager {
   private mcpConfigs: t.MCPServers = {};
   /** Store MCP server instructions */
   private serverInstructions: Map<string, string> = new Map();
+  /** Flow manager for OAuth flows */
+  private flowManager?: FlowStateManager<MCPOAuthTokens | null>;
+  /** Token methods for persistence */
+  private tokenMethods?: TokenMethods;
 
   public static getInstance(): MCPManager {
     if (!MCPManager.instance) {
@@ -48,6 +52,8 @@ export class MCPManager {
     tokenMethods?: TokenMethods;
   }): Promise<void> {
     this.mcpConfigs = mcpServers;
+    this.flowManager = flowManager;
+    this.tokenMethods = tokenMethods;
 
     if (!flowManager) {
       logger.info('[MCP] No flow manager provided, OAuth will not be available');
@@ -1094,6 +1100,134 @@ ${logPrefix} Flow ID: ${newFlowId}
     } catch (error) {
       logger.error(`${logPrefix} Failed to complete OAuth flow for ${serverName}`, error);
       return null;
+    }
+  }
+
+  /**
+   * Test connection to a specific MCP server
+   * @param serverName - Name of the server to test
+   * @param serverConfig - Configuration for the server
+   * @returns Promise with test result
+   */
+  async testServerConnection(serverName: string, serverConfig: any): Promise<{
+    success: boolean;
+    error?: string;
+    tools?: any[];
+  }> {
+    const logPrefix = `[MCPManager][testServerConnection][${serverName}]`;
+    
+    try {
+      logger.info(`${logPrefix} Testing connection...`);
+      
+      // Create a temporary client for testing
+      const tempClient = await this.createClient(serverName, serverConfig);
+      
+      if (!tempClient) {
+        return {
+          success: false,
+          error: 'Failed to create MCP client'
+        };
+      }
+
+      // Test basic connection by listing tools
+      const tools = await tempClient.listTools();
+      
+      // Clean up the temporary client
+      await this.disconnectClient(serverName);
+      
+      logger.info(`${logPrefix} Connection test successful, found ${tools.tools?.length || 0} tools`);
+      
+      return {
+        success: true,
+        tools: tools.tools || []
+      };
+    } catch (error) {
+      logger.error(`${logPrefix} Connection test failed:`, error);
+      
+      // Clean up on error
+      try {
+        await this.disconnectClient(serverName);
+      } catch (cleanupError) {
+        logger.warn(`${logPrefix} Error during cleanup:`, cleanupError);
+      }
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Discover tools from a specific MCP server
+   * @param serverName - Name of the server
+   * @param serverConfig - Configuration for the server
+   * @returns Promise with discovered tools
+   */
+  async discoverServerTools(serverName: string, serverConfig: any): Promise<any[]> {
+    const logPrefix = `[MCPManager][discoverServerTools][${serverName}]`;
+    
+    try {
+      logger.info(`${logPrefix} Discovering tools...`);
+      
+      // Create a temporary client for discovery
+      const tempClient = await this.createClient(serverName, serverConfig);
+      
+      if (!tempClient) {
+        logger.error(`${logPrefix} Failed to create MCP client`);
+        return [];
+      }
+
+      // Get tools from the server
+      const tools = await tempClient.listTools();
+      
+      // Clean up the temporary client
+      await this.disconnectClient(serverName);
+      
+      logger.info(`${logPrefix} Discovered ${tools.tools?.length || 0} tools`);
+      
+      return tools.tools || [];
+    } catch (error) {
+      logger.error(`${logPrefix} Tool discovery failed:`, error);
+      
+      // Clean up on error
+      try {
+        await this.disconnectClient(serverName);
+      } catch (cleanupError) {
+        logger.warn(`${logPrefix} Error during cleanup:`, cleanupError);
+      }
+      
+      return [];
+    }
+  }
+
+  /**
+   * Reinitialize the MCP manager with new configuration
+   * @param mcpServers - New MCP server configuration
+   */
+  async reinitialize(mcpServers: t.MCPServers): Promise<void> {
+    const logPrefix = '[MCPManager][reinitialize]';
+    
+    try {
+      logger.info(`${logPrefix} Reinitializing with ${Object.keys(mcpServers).length} servers...`);
+      
+      // Disconnect all existing clients
+      await this.disconnectAll();
+      
+      // Update configuration
+      this.mcpConfigs = mcpServers;
+      
+      // Reinitialize with new configuration
+      await this.initializeMCP({
+        mcpServers,
+        flowManager: this.flowManager,
+        tokenMethods: this.tokenMethods
+      });
+      
+      logger.info(`${logPrefix} Reinitialization completed successfully`);
+    } catch (error) {
+      logger.error(`${logPrefix} Reinitialization failed:`, error);
+      throw error;
     }
   }
 }

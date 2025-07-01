@@ -4,25 +4,33 @@ const { findToken, updateToken, createToken, deleteTokens } = require('~/models'
 const { getMCPManager, getFlowStateManager } = require('~/config');
 const { getCachedTools, setCachedTools } = require('./Config');
 const { getLogStores } = require('~/cache');
+const MCPServerService = require('./MCPServerService');
 
 /**
  * Initialize MCP servers
  * @param {import('express').Application} app - Express app instance
  */
 async function initializeMCP(app) {
-  const mcpServers = app.locals.mcpConfig;
-  if (!mcpServers) {
-    return;
-  }
-
-  logger.info('Initializing MCP servers...');
+  const yamlMcpServers = app.locals.mcpConfig;
+  
+  logger.info('Initializing MCP servers (YAML + Database)...');
   const mcpManager = getMCPManager();
   const flowsCache = getLogStores(CacheKeys.FLOWS);
   const flowManager = flowsCache ? getFlowStateManager(flowsCache) : null;
 
   try {
+    // Get merged configuration (YAML + all user-defined servers)
+    const mergedMcpServers = await MCPServerService.getMergedMCPConfig();
+    
+    // Log configuration summary
+    const yamlCount = yamlMcpServers ? Object.keys(yamlMcpServers).length : 0;
+    const totalCount = Object.keys(mergedMcpServers).length;
+    const userCount = totalCount - yamlCount;
+    
+    logger.info(`MCP Configuration: ${totalCount} total servers (${yamlCount} YAML + ${userCount} user-defined)`);
+
     await mcpManager.initializeMCP({
-      mcpServers,
+      mcpServers: mergedMcpServers,
       flowManager,
       tokenMethods: {
         findToken,
@@ -32,7 +40,9 @@ async function initializeMCP(app) {
       },
     });
 
+    // Clean up the YAML config from app locals
     delete app.locals.mcpConfig;
+    
     const availableTools = await getCachedTools();
 
     if (!availableTools) {

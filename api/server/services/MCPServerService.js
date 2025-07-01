@@ -230,18 +230,21 @@ class MCPServerService {
    */
   async getMergedMCPConfig(userId = null) {
     try {
-      // TODO: Implement configuration merging
+      logger.debug(`[MCPServerService] Getting merged MCP config for user: ${userId || 'global'}`);
+      
       // 1. Load YAML configuration
-      // 2. Load user-defined servers (if userId provided)
-      // 3. Merge configurations with proper precedence
-      // 4. Return merged configuration
-      
       const yamlConfig = await this.getYamlMCPConfig();
-      const userServers = userId ? await this.getUserServers(userId, { enabled: true }) : [];
       
+      // 2. Load user-defined servers (if userId provided and not in override mode)
+      let userServers = [];
+      if (userId && !this.yamlOverrideEnabled) {
+        userServers = await this.getUserServers(userId, { enabled: true });
+      }
+      
+      // 3. Merge configurations with proper precedence
       const mergedConfig = this.mergeConfigurations(yamlConfig, userServers);
       
-      logger.debug(`[MCPServerService] Merged MCP config: ${Object.keys(mergedConfig).length} servers`);
+      logger.debug(`[MCPServerService] Merged MCP config: ${Object.keys(mergedConfig).length} servers (${Object.keys(yamlConfig).length} YAML + ${userServers.length} user)`);
       
       return mergedConfig;
     } catch (error) {
@@ -325,80 +328,139 @@ class MCPServerService {
 
   /**
    * Perform actual connection test
-   * TODO: Implement real connection testing
    */
   async performConnectionTest(server) {
-    // Placeholder implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const success = Math.random() > 0.3; // 70% success rate for testing
-        resolve({
-          success,
-          error: success ? null : 'Connection timeout or invalid configuration',
-          tools: success ? [
-            {
-              name: 'test-tool',
-              description: 'A test tool',
-              enabled: true,
-              schema: { type: 'object', properties: {} },
-              lastUpdated: new Date()
-            }
-          ] : []
-        });
-      }, 1000);
-    });
+    try {
+      const { getMCPManager } = require('~/config');
+      
+      logger.info(`[MCPServerService] Testing connection for server '${server.name}' (${server.type})`);
+      
+      // Create a temporary MCP configuration for testing
+      const testConfig = {
+        [server.name]: {
+          type: server.type,
+          ...server.config,
+          _userDefined: true,
+          _userId: server.userId,
+          _serverId: server._id
+        }
+      };
+      
+      // Get MCP manager instance
+      const mcpManager = getMCPManager();
+      
+      // Test the connection by attempting to initialize the server
+      const testResult = await mcpManager.testServerConnection(server.name, testConfig[server.name]);
+      
+      if (testResult.success) {
+        logger.info(`[MCPServerService] Connection test successful for '${server.name}'`);
+        return {
+          success: true,
+          error: null,
+          tools: testResult.tools || []
+        };
+      } else {
+        logger.warn(`[MCPServerService] Connection test failed for '${server.name}': ${testResult.error}`);
+        return {
+          success: false,
+          error: testResult.error || 'Connection test failed',
+          tools: []
+        };
+      }
+    } catch (error) {
+      logger.error(`[MCPServerService] Error during connection test for '${server.name}':`, error);
+      return {
+        success: false,
+        error: error.message || 'Connection test failed',
+        tools: []
+      };
+    }
   }
 
   /**
    * Discover tools from server
-   * TODO: Implement real tool discovery
    */
   async discoverServerTools(server) {
-    // Placeholder implementation
-    return [
-      {
-        name: 'discovered-tool-1',
-        description: 'First discovered tool',
-        enabled: true,
-        schema: { type: 'object', properties: {} },
+    try {
+      const { getMCPManager } = require('~/config');
+      
+      logger.info(`[MCPServerService] Discovering tools for server '${server.name}'`);
+      
+      // Get MCP manager instance
+      const mcpManager = getMCPManager();
+      
+      // Create server configuration
+      const serverConfig = {
+        type: server.type,
+        ...server.config,
+        _userDefined: true,
+        _userId: server.userId,
+        _serverId: server._id
+      };
+      
+      // Discover tools from the server
+      const discoveredTools = await mcpManager.discoverServerTools(server.name, serverConfig);
+      
+      // Format tools for database storage
+      const formattedTools = discoveredTools.map(tool => ({
+        name: tool.name,
+        description: tool.description || '',
+        enabled: true, // Enable all discovered tools by default
+        schema: tool.inputSchema || {},
         lastUpdated: new Date()
-      },
-      {
-        name: 'discovered-tool-2',
-        description: 'Second discovered tool',
-        enabled: true,
-        schema: { type: 'object', properties: {} },
-        lastUpdated: new Date()
-      }
-    ];
+      }));
+      
+      logger.info(`[MCPServerService] Discovered ${formattedTools.length} tools for server '${server.name}'`);
+      
+      return formattedTools;
+    } catch (error) {
+      logger.error(`[MCPServerService] Error discovering tools for server '${server.name}':`, error);
+      
+      // Return empty array on error but don't throw
+      return [];
+    }
   }
 
   /**
    * Get YAML MCP configuration
-   * TODO: Implement YAML config loading
    */
   async getYamlMCPConfig() {
-    // Placeholder - return empty config for now
-    return {};
+    try {
+      // Get the current YAML configuration from the app locals or config
+      const loadCustomConfig = require('./Config/loadCustomConfig');
+      const config = await loadCustomConfig();
+      return config?.mcpServers || {};
+    } catch (error) {
+      logger.error('[MCPServerService] Error loading YAML MCP config:', error);
+      return {};
+    }
   }
 
   /**
    * Merge YAML and database configurations
-   * TODO: Implement configuration merging logic
+   * Database servers take precedence over YAML servers with the same name
    */
   mergeConfigurations(yamlConfig, userServers) {
-    // Placeholder implementation
     const merged = { ...yamlConfig };
     
     // Add user servers to merged config
     userServers.forEach(server => {
-      merged[server.name] = {
+      // Convert database server format to MCP manager format
+      const serverConfig = {
         type: server.type,
         ...server.config,
         // Add metadata to identify as user-defined
         _userDefined: true,
-        _userId: server.userId
+        _userId: server.userId,
+        _serverId: server._id
       };
+      
+      // If a YAML server with the same name exists, log the override
+      if (merged[server.name]) {
+        logger.info(`[MCPServerService] User server '${server.name}' overriding YAML configuration`);
+      }
+      
+      merged[server.name] = serverConfig;
     });
     
     return merged;
@@ -406,11 +468,38 @@ class MCPServerService {
 
   /**
    * Trigger MCP system refresh
-   * TODO: Implement MCP system integration
+   * This reloads the MCP manager with updated configurations
    */
   async refreshMCPSystem() {
-    // Placeholder - this will trigger the MCP manager to reload configurations
-    logger.debug('[MCPServerService] MCP system refresh triggered');
+    try {
+      const { getMCPManager } = require('~/config');
+      const { getCachedTools, setCachedTools } = require('./Config');
+      
+      logger.info('[MCPServerService] Triggering MCP system refresh...');
+      
+      // Get MCP manager instance
+      const mcpManager = getMCPManager();
+      
+      // Get merged configuration for all users
+      // Note: This is a global refresh, so we don't pass a specific userId
+      const mergedConfig = await this.getMergedMCPConfig();
+      
+      // Reinitialize MCP manager with new configuration
+      await mcpManager.reinitialize(mergedConfig);
+      
+      // Refresh the global tools cache
+      const availableTools = await getCachedTools();
+      if (availableTools) {
+        const toolsCopy = { ...availableTools };
+        await mcpManager.mapAvailableTools(toolsCopy);
+        await setCachedTools(toolsCopy, { isGlobal: true });
+      }
+      
+      logger.info('[MCPServerService] MCP system refresh completed successfully');
+    } catch (error) {
+      logger.error('[MCPServerService] Error during MCP system refresh:', error);
+      throw error;
+    }
   }
 }
 
