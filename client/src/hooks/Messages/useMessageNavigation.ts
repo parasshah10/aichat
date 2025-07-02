@@ -151,6 +151,49 @@ export default function useMessageNavigation(
     buildBranch();
   }, [getMessages, getSiblingIdx]);
 
+  // Find topmost and bottommost visible messages for navigation
+  const findNavigationTargets = useCallback(() => {
+    const visibleMessages: { index: number; messageId: string; rect: DOMRect }[] = [];
+    
+    allMessages.forEach((message, index) => {
+      const element = document.getElementById(message.messageId);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        
+        // Check if message is at least partially visible
+        const isVisible = rect.bottom > 0 && rect.top < viewportHeight;
+        
+        if (isVisible) {
+          visibleMessages.push({ index, messageId: message.messageId, rect });
+        }
+      }
+    });
+
+    // Sort by position (top to bottom)
+    visibleMessages.sort((a, b) => a.rect.top - b.rect.top);
+
+    const topmost = visibleMessages[0];
+    const bottommost = visibleMessages[visibleMessages.length - 1];
+    
+    // Check if bottommost is partially visible (cut off at bottom)
+    const isBottommostPartial = bottommost && bottommost.rect.bottom > window.innerHeight;
+    
+    // Check if bottommost message is too long to fit in viewport (taller than viewport)
+    const isBottommostTooLong = bottommost && bottommost.rect.height > window.innerHeight;
+
+    console.log('[useMessageNavigation] Navigation targets:', {
+      visibleCount: visibleMessages.length,
+      topmost: topmost ? { index: topmost.index, id: topmost.messageId, rect: topmost.rect } : null,
+      bottommost: bottommost ? { index: bottommost.index, id: bottommost.messageId, rect: bottommost.rect } : null,
+      isBottommostPartial,
+      isBottommostTooLong,
+      allVisibleMessages: visibleMessages.map(m => ({ index: m.index, id: m.messageId, top: m.rect.top }))
+    });
+
+    return { topmost, bottommost, isBottommostPartial, isBottommostTooLong };
+  }, [allMessages]);
+
   // Expose a way to trigger rebuild when sibling indices change
   const triggerRebuild = useCallback(() => {
     // Force rebuild by calling the effect again
@@ -184,106 +227,108 @@ export default function useMessageNavigation(
     debouncedSetShowNavigation(shouldShow);
   }, [allMessages.length, debouncedSetShowNavigation]);
 
-  // Navigation capabilities
-  const canGoPrevious = currentMessageIndex > 0;
-  // canGoNext should be true unless we're at the last message AND at the bottom of the scroll
-  const canGoNext = currentMessageIndex < allMessages.length - 1 || (currentMessageIndex === allMessages.length - 1 && isAtBottom === false);
+  // Navigation capabilities - always available if there are messages
+  const canGoPrevious = allMessages.length > 0;
+  const canGoNext = allMessages.length > 0;
 
-  // Scroll to message and highlight it temporarily
-  const scrollToMessage = useCallback((messageId: string) => {
-    const messageElement = document.getElementById(messageId);
-    console.log('[useMessageNavigation] Scrolling to message:', {
-      messageId,
-      elementFound: !!messageElement,
-      elementId: messageElement?.id,
-      elementClass: messageElement?.className
-    });
-    if (messageElement) {
-      // Clear any existing highlight timeout
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current);
-      }
-      
-      // Remove highlight from any previously highlighted message
-      const previouslyHighlighted = document.querySelector('.message-navigation-highlight');
-      if (previouslyHighlighted) {
-        previouslyHighlighted.classList.remove('message-navigation-highlight');
-      }
-      
-      messageElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start',
-        inline: 'nearest'
-      });
-      
-      // Add highlight class immediately
-      messageElement.classList.add('message-navigation-highlight');
-      console.log('[useMessageNavigation] Added highlight to message:', messageId);
-      
-      // Remove highlight after 1 second
-      highlightTimeoutRef.current = setTimeout(() => {
-        messageElement.classList.remove('message-navigation-highlight');
-        console.log('[useMessageNavigation] Removed highlight from message:', messageId);
-      }, 1000);
-    } else {
-      console.warn('[useMessageNavigation] Message element not found in DOM:', messageId);
-      // Log all message elements in DOM for debugging
-      const allMessageElements = document.querySelectorAll('[id^="message-"]');
-      console.log('[useMessageNavigation] Available message elements in DOM:', 
-        Array.from(allMessageElements).map(el => el.id)
-      );
-    }
-  }, []);
 
   // Navigation handlers
   const handlePrevious = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    console.log('[useMessageNavigation] Previous button clicked:', {
-      canGoPrevious,
-      currentMessageIndex,
-      totalMessages: allMessages.length,
-      currentMessage: allMessages[currentMessageIndex]?.messageId
-    });
-    if (canGoPrevious) {
-      const newIndex = currentMessageIndex - 1;
-      setCurrentMessageIndex(newIndex);
-      const targetMessage = allMessages[newIndex];
-      console.log('[useMessageNavigation] Navigating to previous message:', {
-        newIndex,
-        targetMessageId: targetMessage?.messageId,
-        targetMessageContent: targetMessage?.text?.substring(0, 50) + '...'
+    
+    const { topmost } = findNavigationTargets();
+    
+    if (topmost) {
+      console.log('[useMessageNavigation] Up arrow clicked - scrolling topmost visible message to top:', {
+        messageId: topmost.messageId,
+        index: topmost.index
       });
-      if (targetMessage?.messageId) {
-        scrollToMessage(targetMessage.messageId);
+      
+      // Scroll the topmost visible message to the top of viewport
+      const element = document.getElementById(topmost.messageId);
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+        
+        // Highlight the message
+        if (highlightTimeoutRef.current) {
+          clearTimeout(highlightTimeoutRef.current);
+        }
+        
+        const previouslyHighlighted = document.querySelector('.message-navigation-highlight');
+        if (previouslyHighlighted) {
+          previouslyHighlighted.classList.remove('message-navigation-highlight');
+        }
+        
+        element.classList.add('message-navigation-highlight');
+        
+        highlightTimeoutRef.current = setTimeout(() => {
+          element.classList.remove('message-navigation-highlight');
+        }, 1000);
       }
+    } else {
+      console.log('[useMessageNavigation] No visible messages found for up navigation');
     }
-  }, [canGoPrevious, currentMessageIndex, allMessages, scrollToMessage]);
+  }, [findNavigationTargets]);
 
   const handleNext = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    console.log('[useMessageNavigation] Next button clicked:', {
-      canGoNext,
-      currentMessageIndex,
-      totalMessages: allMessages.length,
-      isAtBottom,
-      currentMessage: allMessages[currentMessageIndex]?.messageId
-    });
-    if (currentMessageIndex < allMessages.length - 1) {
-      // Navigate to next message
-      const newIndex = currentMessageIndex + 1;
-      setCurrentMessageIndex(newIndex);
-      const targetMessage = allMessages[newIndex];
-      console.log('[useMessageNavigation] Navigating to next message:', {
-        newIndex,
-        targetMessageId: targetMessage?.messageId,
-        targetMessageContent: targetMessage?.text?.substring(0, 50) + '...'
-      });
-      if (targetMessage?.messageId) {
-        scrollToMessage(targetMessage.messageId);
+    
+    const { bottommost } = findNavigationTargets();
+    
+    if (bottommost) {
+      // Find the next message after the bottommost visible one
+      const nextIndex = bottommost.index + 1;
+      if (nextIndex < allMessages.length) {
+        const nextMessage = allMessages[nextIndex];
+        console.log('[useMessageNavigation] Down arrow clicked - going to next message after bottommost:', {
+          currentBottommostId: bottommost.messageId,
+          nextMessageId: nextMessage.messageId,
+          nextIndex
+        });
+        
+        const element = document.getElementById(nextMessage.messageId);
+        if (element) {
+          element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+          
+          // Highlight the message
+          if (highlightTimeoutRef.current) {
+            clearTimeout(highlightTimeoutRef.current);
+          }
+          
+          const previouslyHighlighted = document.querySelector('.message-navigation-highlight');
+          if (previouslyHighlighted) {
+            previouslyHighlighted.classList.remove('message-navigation-highlight');
+          }
+          
+          element.classList.add('message-navigation-highlight');
+          
+          highlightTimeoutRef.current = setTimeout(() => {
+            element.classList.remove('message-navigation-highlight');
+          }, 1000);
+        }
+      } else {
+        // No next message - scroll to very bottom
+        console.log('[useMessageNavigation] No next message - scrolling to bottom');
+        const messagesEnd = document.getElementById('messages-end');
+        if (messagesEnd) {
+          messagesEnd.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'end',
+            inline: 'nearest'
+          });
+        }
       }
-    } else if (currentMessageIndex === allMessages.length - 1 && isAtBottom === false) {
-      // Scroll to bottom of current (last) message
-      console.log('[useMessageNavigation] Scrolling to messages end');
+    } else {
+      // No visible messages - scroll to bottom
+      console.log('[useMessageNavigation] No visible messages - scrolling to bottom');
       const messagesEnd = document.getElementById('messages-end');
       if (messagesEnd) {
         messagesEnd.scrollIntoView({ 
@@ -293,7 +338,7 @@ export default function useMessageNavigation(
         });
       }
     }
-  }, [canGoNext, currentMessageIndex, allMessages, scrollToMessage, isAtBottom]);
+  }, [findNavigationTargets, allMessages]);
 
   // Reset current index when messages change
   useEffect(() => {
