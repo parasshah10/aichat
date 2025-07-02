@@ -7,6 +7,13 @@ import store from '~/store';
 
 const toggleSwitchConfigs = [
   {
+    stateAtom: store.chatGPTLayout,
+    localizationKey: 'com_nav_chatgpt_layout',
+    switchId: 'chatGPTLayout',
+    hoverCardText: 'com_nav_info_chatgpt_layout',
+    key: 'chatGPTLayout',
+  },
+  {
     stateAtom: store.enterToSend,
     localizationKey: 'com_nav_enter_to_send',
     switchId: 'enterToSend',

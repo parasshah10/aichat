@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useRecoilValue } from 'recoil';
 import { CSSTransition } from 'react-transition-group';
 import type { TMessage } from 'librechat-data-provider';
-import { useScreenshot, useMessageScrolling, useLocalize } from '~/hooks';
-import ScrollToBottom from '~/components/Messages/ScrollToBottom';
+import { useScreenshot, useMessageScrolling, useMessageNavigation, useLocalize } from '~/hooks';
+import MessageNavigation from '~/components/Messages/MessageNavigation';
 import MultiMessage from './MultiMessage';
 import { cn } from '~/utils';
 import store from '~/store';
@@ -27,6 +27,14 @@ export default function MessagesView({
     handleSmoothToRef,
     debouncedHandleScroll,
   } = useMessageScrolling(_messagesTree);
+
+  const {
+    showNavigation,
+    canGoPrevious,
+    canGoNext,
+    handlePrevious,
+    handleNext,
+  } = useMessageNavigation(_messagesTree, !showScrollButton);
 
   const { conversationId } = conversation ?? {};
 
@@ -76,7 +84,7 @@ export default function MessagesView({
           </div>
 
           <CSSTransition
-            in={showScrollButton && scrollButtonPreference}
+            in={showNavigation && scrollButtonPreference}
             timeout={{
               enter: 550,
               exit: 700,
@@ -85,7 +93,12 @@ export default function MessagesView({
             unmountOnExit={true}
             appear={true}
           >
-            <ScrollToBottom scrollHandler={handleSmoothToRef} />
+            <MessageNavigation
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              canGoPrevious={canGoPrevious}
+              canGoNext={canGoNext}
+            />
           </CSSTransition>
         </div>
       </div>

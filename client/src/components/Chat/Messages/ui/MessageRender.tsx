@@ -60,6 +60,7 @@ const MessageRender = memo(
     });
     const maximizeChatSpace = useRecoilValue(store.maximizeChatSpace);
     const fontSize = useRecoilValue(store.fontSize);
+    const chatGPTLayout = useRecoilValue(store.chatGPTLayout);
 
     const handleRegenerateMessage = useCallback(() => regenerateMessage(), [regenerateMessage]);
     const hasNoChildren = !(msg?.children?.length ?? 0);
@@ -114,6 +115,14 @@ const MessageRender = memo(
         : 'md:max-w-[47rem] xl:max-w-[55rem]',
     };
 
+    // ChatGPT-style layout modifications
+    const chatGPTClasses = chatGPTLayout && msg?.isCreatedByUser ? {
+      container: 'flex-row-reverse',
+      messageWrapper: 'items-end justify-end',
+      userMessageContainer: 'w-auto max-w-[85%] ml-auto',
+      userMessageContent: 'bg-surface-tertiary rounded-2xl px-4 py-2',
+    } : {};
+
     const conditionalClasses = {
       latestCard: isLatestCard ? 'bg-surface-secondary' : '',
       cardRender: showCardRender ? 'cursor-pointer transition-colors duration-300' : '',
@@ -130,6 +139,8 @@ const MessageRender = memo(
           conditionalClasses.latestCard,
           conditionalClasses.cardRender,
           conditionalClasses.focus,
+          chatGPTClasses.container,
+          chatGPTClasses.messageWrapper,
           'message-render',
         )}
         onClick={clickHandler}
@@ -145,73 +156,151 @@ const MessageRender = memo(
           <div className="absolute right-0 top-0 m-2 h-3 w-3 rounded-full bg-text-primary" />
         )}
 
-        <div className="relative flex flex-shrink-0 flex-col items-center">
-          <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full">
-            <MessageIcon iconData={iconData} assistant={assistant} agent={agent} />
+        {!chatGPTLayout && (
+          <div className="relative flex flex-shrink-0 flex-col items-center">
+            <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full">
+              <MessageIcon iconData={iconData} assistant={assistant} agent={agent} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           className={cn(
             'relative flex w-11/12 flex-col',
             msg.isCreatedByUser ? 'user-turn' : 'agent-turn',
+            chatGPTClasses.userMessageContainer,
           )}
         >
-          <h2 className={cn('select-none font-semibold', fontSize)}>{messageLabel}</h2>
+          {!chatGPTLayout && (
+            <h2 className={cn('select-none font-semibold', fontSize)}>{messageLabel}</h2>
+          )}
 
-          <div className="flex flex-col gap-1">
-            <div className="flex max-w-full flex-grow flex-col gap-0">
-              <MessageContext.Provider
-                value={{
-                  messageId: msg.messageId,
-                  conversationId: conversation?.conversationId,
-                  isExpanded: false,
-                }}
+          {/* For ChatGPT layout user messages, separate bubble from buttons */}
+          {chatGPTLayout && msg?.isCreatedByUser ? (
+            <>
+              {/* Message bubble - sizes to content only and sticks to right */}
+              <div className="flex justify-end">
+                <div 
+                  className={cn(
+                    "flex max-w-full flex-col gap-0 w-fit",
+                    chatGPTClasses.userMessageContent
+                  )}
+                >
+                <MessageContext.Provider
+                  value={{
+                    messageId: msg.messageId,
+                    conversationId: conversation?.conversationId,
+                    isExpanded: false,
+                  }}
+                >
+                  {msg.plugin && <Plugin plugin={msg.plugin} />}
+                  <MessageContent
+                    ask={ask}
+                    edit={edit}
+                    isLast={isLast}
+                    text={msg.text || ''}
+                    message={msg}
+                    enterEdit={enterEdit}
+                    error={!!(msg.error ?? false)}
+                    isSubmitting={isSubmitting}
+                    unfinished={msg.unfinished ?? false}
+                    isCreatedByUser={msg.isCreatedByUser ?? true}
+                    siblingIdx={siblingIdx ?? 0}
+                    setSiblingIdx={setSiblingIdx ?? (() => ({}))}
+                  />
+                </MessageContext.Provider>
+                </div>
+              </div>
+              
+              {/* Buttons below bubble, right-aligned */}
+              <div className="flex justify-end mt-1">
+                {hasNoChildren && (isSubmittingFamily === true || isSubmitting) ? (
+                  <PlaceholderRow isCard={isCard} />
+                ) : (
+                  <SubRow classes="text-xs">
+                    <SiblingSwitch
+                      siblingIdx={siblingIdx}
+                      siblingCount={siblingCount}
+                      setSiblingIdx={setSiblingIdx}
+                    />
+                    <HoverButtons
+                      index={index}
+                      isEditing={edit}
+                      message={msg}
+                      enterEdit={enterEdit}
+                      isSubmitting={isSubmitting}
+                      conversation={conversation ?? null}
+                      regenerate={handleRegenerateMessage}
+                      copyToClipboard={copyToClipboard}
+                      handleContinue={handleContinue}
+                      latestMessage={latestMessage}
+                      handleFeedback={handleFeedback}
+                      isLast={isLast}
+                    />
+                  </SubRow>
+                )}
+              </div>
+            </>
+          ) : (
+            /* Normal layout - keep existing behavior */
+            <div className="flex flex-col gap-1">
+              <div 
+                className={cn(
+                  "flex max-w-full flex-grow flex-col gap-0"
+                )}
               >
-                {msg.plugin && <Plugin plugin={msg.plugin} />}
-                <MessageContent
-                  ask={ask}
-                  edit={edit}
-                  isLast={isLast}
-                  text={msg.text || ''}
-                  message={msg}
-                  enterEdit={enterEdit}
-                  error={!!(msg.error ?? false)}
-                  isSubmitting={isSubmitting}
-                  unfinished={msg.unfinished ?? false}
-                  isCreatedByUser={msg.isCreatedByUser ?? true}
-                  siblingIdx={siblingIdx ?? 0}
-                  setSiblingIdx={setSiblingIdx ?? (() => ({}))}
-                />
-              </MessageContext.Provider>
-            </div>
+                <MessageContext.Provider
+                  value={{
+                    messageId: msg.messageId,
+                    conversationId: conversation?.conversationId,
+                    isExpanded: false,
+                  }}
+                >
+                  {msg.plugin && <Plugin plugin={msg.plugin} />}
+                  <MessageContent
+                    ask={ask}
+                    edit={edit}
+                    isLast={isLast}
+                    text={msg.text || ''}
+                    message={msg}
+                    enterEdit={enterEdit}
+                    error={!!(msg.error ?? false)}
+                    isSubmitting={isSubmitting}
+                    unfinished={msg.unfinished ?? false}
+                    isCreatedByUser={msg.isCreatedByUser ?? true}
+                    siblingIdx={siblingIdx ?? 0}
+                    setSiblingIdx={setSiblingIdx ?? (() => ({}))}
+                  />
+                </MessageContext.Provider>
+              </div>
 
-            {hasNoChildren && (isSubmittingFamily === true || isSubmitting) ? (
-              <PlaceholderRow isCard={isCard} />
-            ) : (
-              <SubRow classes="text-xs">
-                <SiblingSwitch
-                  siblingIdx={siblingIdx}
-                  siblingCount={siblingCount}
-                  setSiblingIdx={setSiblingIdx}
-                />
-                <HoverButtons
-                  index={index}
-                  isEditing={edit}
-                  message={msg}
-                  enterEdit={enterEdit}
-                  isSubmitting={isSubmitting}
-                  conversation={conversation ?? null}
-                  regenerate={handleRegenerateMessage}
-                  copyToClipboard={copyToClipboard}
-                  handleContinue={handleContinue}
-                  latestMessage={latestMessage}
-                  handleFeedback={handleFeedback}
-                  isLast={isLast}
-                />
-              </SubRow>
-            )}
-          </div>
+              {hasNoChildren && (isSubmittingFamily === true || isSubmitting) ? (
+                <PlaceholderRow isCard={isCard} />
+              ) : (
+                <SubRow classes="text-xs">
+                  <SiblingSwitch
+                    siblingIdx={siblingIdx}
+                    siblingCount={siblingCount}
+                    setSiblingIdx={setSiblingIdx}
+                  />
+                  <HoverButtons
+                    index={index}
+                    isEditing={edit}
+                    message={msg}
+                    enterEdit={enterEdit}
+                    isSubmitting={isSubmitting}
+                    conversation={conversation ?? null}
+                    regenerate={handleRegenerateMessage}
+                    copyToClipboard={copyToClipboard}
+                    handleContinue={handleContinue}
+                    latestMessage={latestMessage}
+                    handleFeedback={handleFeedback}
+                    isLast={isLast}
+                  />
+                </SubRow>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
