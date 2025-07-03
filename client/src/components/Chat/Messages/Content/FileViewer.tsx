@@ -7,10 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from '~/components/ui/Dialog';
 import { Button } from '~/components/ui/Button';
-import { useFileDownload } from '~/data-provider';
 import { useToastContext } from '~/Providers';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { request } from 'librechat-data-provider';
@@ -32,6 +30,7 @@ export const FileViewer = memo(({ attachment, children }: FileViewerProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const { showToast } = useToastContext();
   const { user } = useAuthContext();
@@ -144,14 +143,14 @@ export const FileViewer = memo(({ attachment, children }: FileViewerProps) => {
   const lang = getLanguageFromFilename(filename);
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
         showCloseButton={false}
         className="w-[90vw] !max-w-6xl h-[90vh] flex flex-col p-0 gap-0"
         disableScroll={true}
       >
-        <DialogHeader className="py-3 px-4 flex-row items-center border-b flex-shrink-0 gap-2">
+        <DialogHeader className="py-1 px-4 flex-row items-center border-b flex-shrink-0 gap-2">
           <div className="flex flex-col min-w-0 flex-1">
             <DialogTitle className="truncate text-sm font-semibold m-0 leading-tight">
               {filename}
@@ -186,11 +185,15 @@ export const FileViewer = memo(({ attachment, children }: FileViewerProps) => {
             >
               <Download className="h-4 w-4" />
             </Button>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="Close">
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogClose>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setIsOpen(false)}
+              title="Close"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DialogHeader>
 
