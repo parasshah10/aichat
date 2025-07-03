@@ -3,6 +3,8 @@ import { imageExtRegex, Tools } from 'librechat-data-provider';
 import type { TAttachment, TFile, TAttachmentMetadata } from 'librechat-data-provider';
 import FileContainer from '~/components/Chat/Input/Files/FileContainer';
 import Image from '~/components/Chat/Messages/Content/Image';
+import FileViewer from '~/components/Chat/Messages/Content/FileViewer';
+import { canViewFile } from '~/utils/fileViewer';
 import { useAttachmentLink } from './LogLink';
 import { cn } from '~/utils';
 
@@ -22,6 +24,10 @@ const FileAttachment = memo(({ attachment }: { attachment: Partial<TAttachment> 
   if (!attachment.filepath) {
     return null;
   }
+
+  // Check if file can be viewed
+  const canView = canViewFile(attachment.filename, attachment.type, attachment.filepath);
+
   return (
     <div
       className={cn(
@@ -37,7 +43,7 @@ const FileAttachment = memo(({ attachment }: { attachment: Partial<TAttachment> 
     >
       <FileContainer
         file={attachment}
-        onClick={handleDownload}
+        onClick={canView ? undefined : handleDownload}
         overrideType={extension}
         containerClassName="max-w-fit"
         buttonClassName="bg-surface-secondary hover:cursor-pointer hover:bg-surface-hover active:bg-surface-secondary focus:bg-surface-hover hover:border-border-heavy active:border-border-heavy"
@@ -135,7 +141,10 @@ export function AttachmentGroup({ attachments }: { attachments?: TAttachment[] }
         </div>
       )}
       {imageAttachments.length > 0 && (
-        <div className="mb-2 flex flex-wrap items-center">
+        <div className={cn(
+          'mb-2 flex gap-2',
+          imageAttachments.length === 1 ? 'flex-col' : 'flex-wrap items-start'
+        )}>
           {imageAttachments.map((attachment, index) => (
             <ImageAttachment attachment={attachment} key={`image-${index}`} />
           ))}

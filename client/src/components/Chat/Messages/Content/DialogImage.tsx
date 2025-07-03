@@ -251,7 +251,7 @@ export default function DialogImage({ isOpen, onOpenChange, src = '', downloadIm
         >
           <div
             ref={containerRef}
-            className="flex flex-1 items-center justify-center px-2 pb-4 pt-16 sm:px-4 sm:pt-20"
+            className="flex flex-1 items-center justify-center px-1 py-2 sm:px-4 sm:py-4"
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -265,15 +265,10 @@ export default function DialogImage({ isOpen, onOpenChange, src = '', downloadIm
             }}
           >
             <div
-              className="flex items-center justify-center transition-transform duration-100 ease-out"
+              className="flex h-full w-full items-center justify-center transition-transform duration-100 ease-out"
               style={{
                 transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
                 transformOrigin: 'center center',
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
               <img
@@ -281,8 +276,8 @@ export default function DialogImage({ isOpen, onOpenChange, src = '', downloadIm
                 alt="Image"
                 className="block object-contain"
                 style={{
-                  maxHeight: 'calc(100vh - 8rem)',
-                  maxWidth: getImageMaxWidth(),
+                  maxHeight: 'calc(100vh - 4rem)',
+                  maxWidth: '100%',
                   width: 'auto',
                   height: 'auto',
                 }}

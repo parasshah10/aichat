@@ -206,14 +206,56 @@ router.get('/download/:userId/:file_id', async (req, res) => {
       return res.status(404).send('File not found');
     }
 
-    if (!file.filepath.includes(userId)) {
-      logger.warn(`${errorPrefix} forbidden: ${file_id}`);
+    // Debug: Log file object to see its structure
+    logger.warn(`File object for ${file_id}:`, JSON.stringify(file, null, 2));
+    logger.warn(`File source: ${file.source}, filepath: ${file.filepath}`);
+    
+    // Allow access if filepath contains userId OR if file belongs to the requesting user
+    const fileUserId = file.user ? file.user.toString() : null;
+    if (!file.filepath.includes(userId) && fileUserId !== userId) {
+      logger.warn(`${errorPrefix} forbidden: ${file_id} - filepath: ${file.filepath}, file.user: ${file.user}, fileUserId: ${fileUserId}, userId: ${userId}`);
       return res.status(403).send('Forbidden');
     }
 
     if (checkOpenAIStorage(file.source) && !file.model) {
       logger.warn(`${errorPrefix} has no associated model: ${file_id}`);
       return res.status(400).send('The model used when creating this file is not available');
+    }
+
+    // Handle text files - check if physical file exists first
+    if (file.source === 'text') {
+      // Try to construct the actual file path
+      const path = require('path');
+      const fs = require('fs');
+      
+      // Try original filename first
+      let actualFilePath = path.join(process.cwd(), 'uploads', 'temp', userId, file.filename);
+      logger.warn(`Checking for text file at: ${actualFilePath}`);
+      
+      // If not found, try sanitized filename (spaces and special chars replaced with underscores)
+      if (!fs.existsSync(actualFilePath)) {
+        const sanitizedFilename = file.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+        actualFilePath = path.join(process.cwd(), 'uploads', 'temp', userId, sanitizedFilename);
+        logger.warn(`Original not found, trying sanitized filename at: ${actualFilePath}`);
+      }
+      
+      if (fs.existsSync(actualFilePath)) {
+        logger.warn(`Found physical file, streaming from: ${actualFilePath}`);
+        const stream = fs.createReadStream(actualFilePath);
+        res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+        res.setHeader('Content-Type', file.type || 'text/plain');
+        res.setHeader('X-File-Metadata', JSON.stringify(file));
+        return stream.pipe(res);
+      } else if (file.text) {
+        logger.warn(`No physical file found, serving from database text field`);
+        res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('X-File-Metadata', JSON.stringify(file));
+        return res.send(file.text);
+      } else {
+        logger.warn(`No physical file or text content found for text source file`);
+        return res.status(404).send('File content not found');
+      }
     }
 
     const { getDownloadStream } = getStrategyFunctions(file.source);

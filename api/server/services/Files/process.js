@@ -524,16 +524,8 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
     });
     fileInfoMetadata = { fileIdentifier };
   } else if (tool_resource === EToolResources.file_search) {
-    const isFileSearchEnabled = await checkCapability(req, AgentCapabilities.file_search);
-    if (!isFileSearchEnabled) {
-      throw new Error('File search is not enabled for Agents');
-    }
+    // File search capability check removed
   } else if (tool_resource === EToolResources.ocr) {
-    const isOCREnabled = await checkCapability(req, AgentCapabilities.ocr);
-    if (!isOCREnabled) {
-      throw new Error('OCR capability is not enabled for Agents');
-    }
-
     const { handleFileUpload: uploadOCR } = getStrategyFunctions(
       req.app.locals?.ocr?.strategy ?? FileSources.mistral_ocr,
     );

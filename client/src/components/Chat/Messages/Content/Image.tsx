@@ -79,7 +79,7 @@ const Image = ({
     <div ref={containerRef}>
       <div
         className={cn(
-          'relative mt-1 flex h-auto w-full max-w-lg items-center justify-center overflow-hidden rounded-lg border border-border-light text-text-secondary-alt shadow-md',
+          'relative mt-1 h-32 w-32 overflow-hidden rounded-lg border border-border-light text-text-secondary-alt shadow-md',
           className,
         )}
       >
@@ -87,7 +87,7 @@ const Image = ({
           type="button"
           aria-label={`View ${altText} in dialog`}
           onClick={() => setIsOpen(true)}
-          className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="h-full w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <LazyLoadImage
             alt={altText}
@@ -99,14 +99,15 @@ const Image = ({
             )}
             src={imagePath}
             style={{
-              width: `${scaledWidth}`,
-              height: 'auto',
+              width: '100%',
+              height: '100%',
               color: 'transparent',
               display: 'block',
+              objectFit: 'cover',
             }}
             placeholder={
               <Skeleton
-                className={cn('h-auto w-full', `h-[${scaledHeight}] w-[${scaledWidth}]`)}
+                className="h-full w-full"
                 aria-label="Loading image"
                 aria-busy="true"
               />

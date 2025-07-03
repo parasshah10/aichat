@@ -58,21 +58,15 @@ const AttachFileMenu = ({ disabled, conversationId, endpointFileConfig }: Attach
         },
         icon: <ImageUpIcon className="icon-md" />,
       },
-    ];
-
-    if (capabilities.includes(EToolResources.ocr)) {
-      items.push({
+      {
         label: localize('com_ui_upload_ocr_text'),
         onClick: () => {
           setToolResource(EToolResources.ocr);
           handleUploadClick();
         },
         icon: <FileType2Icon className="icon-md" />,
-      });
-    }
-
-    if (capabilities.includes(EToolResources.file_search)) {
-      items.push({
+      },
+      {
         label: localize('com_ui_upload_file_search'),
         onClick: () => {
           setToolResource(EToolResources.file_search);
@@ -80,11 +74,8 @@ const AttachFileMenu = ({ disabled, conversationId, endpointFileConfig }: Attach
           handleUploadClick();
         },
         icon: <FileSearch className="icon-md" />,
-      });
-    }
-
-    if (capabilities.includes(EToolResources.execute_code)) {
-      items.push({
+      },
+      {
         label: localize('com_ui_upload_code_files'),
         onClick: () => {
           setToolResource(EToolResources.execute_code);
@@ -95,11 +86,11 @@ const AttachFileMenu = ({ disabled, conversationId, endpointFileConfig }: Attach
           handleUploadClick();
         },
         icon: <TerminalSquareIcon className="icon-md" />,
-      });
-    }
+      },
+    ];
 
     return items;
-  }, [capabilities, localize, setToolResource, setEphemeralAgent]);
+  }, [localize, setToolResource, setEphemeralAgent]);
 
   const menuTrigger = (
     <TooltipAnchor
