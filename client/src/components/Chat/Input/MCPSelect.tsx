@@ -4,6 +4,7 @@ import { Constants } from 'librechat-data-provider';
 import { useUpdateUserPluginsMutation } from 'librechat-data-provider/react-query';
 import type { TUpdateUserPlugins, TPlugin } from 'librechat-data-provider';
 import MCPConfigDialog, { type ConfigFieldDetail } from '~/components/ui/MCPConfigDialog';
+import MCPEnhancedSelect from './MCPEnhancedSelect';
 import { useToastContext, useBadgeRowContext } from '~/Providers';
 import MultiSelect from '~/components/ui/MultiSelect';
 import { MCPIcon } from '~/components/svg';
@@ -18,7 +19,7 @@ function MCPSelect() {
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const { mcpSelect, startupConfig } = useBadgeRowContext();
-  const { mcpValues, setMCPValues, mcpServerNames, mcpToolDetails, isPinned } = mcpSelect;
+  const { mcpValues, setMCPValues, mcpServerNames, mcpToolDetails, isPinned, setIsPinned } = mcpSelect;
 
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [selectedToolForConfig, setSelectedToolForConfig] = useState<TPlugin | null>(null);
@@ -130,21 +131,33 @@ function MCPSelect() {
 
   const placeholderText =
     startupConfig?.interface?.mcpServers?.placeholder || localize('com_ui_mcp_servers');
+
+  // Define handlers inline to avoid hook order issues
+  const handleConfigClick = (tool: TPlugin) => {
+    setSelectedToolForConfig(tool);
+    setIsConfigModalOpen(true);
+  };
+
+  const handleMCPToggle = (serverName: string) => {
+    const currentValues = mcpValues ?? [];
+    const newValues = currentValues.includes(serverName)
+      ? currentValues.filter(v => v !== serverName)
+      : [...currentValues, serverName];
+    setMCPValues(newValues);
+  };
+
   return (
     <>
-      <MultiSelect
-        items={mcpServerNames}
-        selectedValues={mcpValues ?? []}
-        setSelectedValues={setMCPValues}
-        defaultSelectedValues={mcpValues ?? []}
-        renderSelectedValues={renderSelectedValues}
-        renderItemContent={renderItemContent}
+      {/* Enhanced MCP select with all features */}
+      <MCPEnhancedSelect
+        isMCPPinned={isPinned}
+        setIsMCPPinned={setIsPinned}
+        mcpValues={mcpValues}
+        mcpServerNames={mcpServerNames}
+        mcpToolDetails={mcpToolDetails || []}
+        handleMCPToggle={handleMCPToggle}
+        onConfigClick={handleConfigClick}
         placeholder={placeholderText}
-        popoverClassName="min-w-fit"
-        className="badge-icon min-w-fit"
-        selectIcon={<MCPIcon className="icon-md text-text-primary" />}
-        selectItemsClassName="border border-blue-600/50 bg-blue-500/10 hover:bg-blue-700/10"
-        selectClassName="group relative inline-flex items-center justify-center md:justify-start gap-1.5 rounded-full border border-border-medium text-sm font-medium transition-all md:w-full size-9 p-2 md:p-3 bg-transparent shadow-sm hover:bg-surface-hover hover:shadow-md active:shadow-inner"
       />
       {selectedToolForConfig && (
         <MCPConfigDialog

@@ -346,3 +346,43 @@ export const useUpdateFeedbackMutation = (
     },
   );
 };
+
+// MCP Server refresh mutations
+export const useRefreshMCPServerMutation = (): UseMutationResult<
+  { message: string; serverName: string; timestamp: string },
+  Error,
+  string
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (serverName: string) => dataService.refreshMCPServer(serverName),
+    {
+      onSuccess: () => {
+        // Invalidate tools cache to refresh the UI
+        queryClient.invalidateQueries([QueryKeys.tools]);
+      },
+    },
+  );
+};
+
+export const useRefreshAllMCPServersMutation = (): UseMutationResult<
+  { 
+    message: string; 
+    refreshedServers: string[]; 
+    failedServers: string[]; 
+    timestamp: string 
+  },
+  Error,
+  void
+> => {
+  const queryClient = useQueryClient();
+  return useMutation(
+    () => dataService.refreshAllMCPServers(),
+    {
+      onSuccess: () => {
+        // Invalidate tools cache to refresh the UI
+        queryClient.invalidateQueries([QueryKeys.tools]);
+      },
+    },
+  );
+};

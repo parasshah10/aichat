@@ -832,3 +832,17 @@ export const createMemory = (data: {
 }): Promise<{ created: boolean; memory: q.TUserMemory }> => {
   return request.post(endpoints.memories(), data);
 };
+
+// MCP Server refresh functions
+export const refreshMCPServer = (serverName: string): Promise<{ message: string; serverName: string; timestamp: string }> => {
+  return request.post(`/api/mcp/refresh/${serverName}`, {});
+};
+
+export const refreshAllMCPServers = (): Promise<{ 
+  message: string; 
+  refreshedServers: string[]; 
+  failedServers: string[]; 
+  timestamp: string 
+}> => {
+  return request.post('/api/mcp/refresh', {});
+};

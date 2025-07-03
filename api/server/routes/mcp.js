@@ -5,6 +5,7 @@ const { CacheKeys } = require('librechat-data-provider');
 const { requireJwtAuth } = require('~/server/middleware');
 const { getFlowStateManager } = require('~/config');
 const { getLogStores } = require('~/cache');
+const { refreshMCPServer, refreshAllMCPServers } = require('../controllers/MCPController');
 
 const router = Router();
 
@@ -201,5 +202,11 @@ router.get('/oauth/status/:flowId', async (req, res) => {
     res.status(500).json({ error: 'Failed to get flow status' });
   }
 });
+
+// Refresh a specific MCP server
+router.post('/refresh/:serverName', requireJwtAuth, refreshMCPServer);
+
+// Refresh all MCP servers
+router.post('/refresh', requireJwtAuth, refreshAllMCPServers);
 
 module.exports = router;

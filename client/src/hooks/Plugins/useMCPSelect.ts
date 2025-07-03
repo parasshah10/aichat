@@ -30,23 +30,11 @@ export function useMCPSelect({ conversationId }: UseMCPSelectOptions) {
   const [ephemeralAgent, setEphemeralAgent] = useRecoilState(ephemeralAgentByConvoId(key));
   const { data: mcpToolDetails, isFetched } = useAvailableToolsQuery(EModelEndpoint.agents, {
     select: (data: TPlugin[]) => {
-      const mcpToolsMap = new Map<string, TPlugin>();
-      data.forEach((tool) => {
+      // Return ALL MCP tools, not just one per server
+      return data.filter((tool) => {
         const isMCP = tool.pluginKey.includes(Constants.mcp_delimiter);
-        if (isMCP && tool.chatMenu !== false) {
-          const parts = tool.pluginKey.split(Constants.mcp_delimiter);
-          const serverName = parts[parts.length - 1];
-          if (!mcpToolsMap.has(serverName)) {
-            mcpToolsMap.set(serverName, {
-              name: serverName,
-              pluginKey: tool.pluginKey,
-              authConfig: tool.authConfig,
-              authenticated: tool.authenticated,
-            });
-          }
-        }
+        return isMCP && tool.chatMenu !== false;
       });
-      return Array.from(mcpToolsMap.values());
     },
   });
 
@@ -91,14 +79,27 @@ export function useMCPSelect({ conversationId }: UseMCPSelectOptions) {
     }
     hasSetFetched.current = key;
     if ((mcpToolDetails?.length ?? 0) > 0) {
-      setMCPValues(mcpValues.filter((mcp) => mcpToolDetails?.some((tool) => tool.name === mcp)));
+      setMCPValues(mcpValues.filter((mcp) => {
+        return mcpToolDetails?.some((tool) => {
+          const parts = tool.pluginKey.split(Constants.mcp_delimiter);
+          const serverName = parts[parts.length - 1];
+          return serverName === mcp;
+        });
+      }));
       return;
     }
     setMCPValues([]);
   }, [isFetched, setMCPValues, mcpToolDetails, key, mcpValues]);
 
   const mcpServerNames = useMemo(() => {
-    return (mcpToolDetails ?? []).map((tool) => tool.name);
+    // Extract unique server names from all tools
+    const serverNamesSet = new Set<string>();
+    (mcpToolDetails ?? []).forEach((tool) => {
+      const parts = tool.pluginKey.split(Constants.mcp_delimiter);
+      const serverName = parts[parts.length - 1];
+      serverNamesSet.add(serverName);
+    });
+    return Array.from(serverNamesSet);
   }, [mcpToolDetails]);
 
   return {

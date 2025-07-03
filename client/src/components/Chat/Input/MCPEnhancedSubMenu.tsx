@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { ChevronRight, RefreshCw } from 'lucide-react';
-import { Constants } from 'librechat-data-provider';
 import { useRefreshAllMCPServersMutation } from 'librechat-data-provider/react-query';
 import { PinIcon, MCPIcon } from '~/components/svg';
 import { useToastContext } from '~/Providers';
@@ -10,7 +9,7 @@ import { cn } from '~/utils';
 import MCPServerItem from './MCPServerItem';
 import type { TPlugin } from 'librechat-data-provider';
 
-interface MCPSubMenuProps {
+interface MCPEnhancedSubMenuProps {
   isMCPPinned: boolean;
   setIsMCPPinned: (value: boolean) => void;
   mcpValues?: string[];
@@ -21,7 +20,7 @@ interface MCPSubMenuProps {
   placeholder?: string;
 }
 
-const MCPSubMenu = ({
+const MCPEnhancedSubMenu = ({
   mcpValues,
   isMCPPinned,
   mcpServerNames,
@@ -31,7 +30,7 @@ const MCPSubMenu = ({
   onConfigClick,
   placeholder,
   ...props
-}: MCPSubMenuProps) => {
+}: MCPEnhancedSubMenuProps) => {
   const localize = useLocalize();
   const { showToast } = useToastContext();
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
@@ -83,19 +82,14 @@ const MCPSubMenu = ({
   // Group tools by server name
   const toolsByServer = React.useMemo(() => {
     const grouped: Record<string, TPlugin[]> = {};
-    
     mcpToolDetails.forEach((tool) => {
-      // Use the correct delimiter: '_mcp_' 
-      const parts = tool.pluginKey.split(Constants.mcp_delimiter);
-      const serverName = parts[parts.length - 1];
-      
-      if (!grouped[serverName]) {
-        grouped[serverName] = [];
+      if (!grouped[tool.name]) {
+        grouped[tool.name] = [];
       }
-      grouped[serverName].push(tool);
+      grouped[tool.name].push(tool);
     });
     return grouped;
-  }, [mcpToolDetails, mcpServerNames]);
+  }, [mcpToolDetails]);
 
   return (
     <Ariakit.MenuProvider store={menuStore}>
@@ -194,4 +188,4 @@ const MCPSubMenu = ({
   );
 };
 
-export default React.memo(MCPSubMenu);
+export default React.memo(MCPEnhancedSubMenu);

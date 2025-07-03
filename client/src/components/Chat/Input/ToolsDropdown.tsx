@@ -174,8 +174,13 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
             isMCPPinned={isMCPPinned}
             placeholder={mcpPlaceholder}
             mcpServerNames={mcpServerNames}
+            mcpToolDetails={mcpSelect.mcpToolDetails || []}
             setIsMCPPinned={setIsMCPPinned}
             handleMCPToggle={handleMCPToggle}
+            onConfigClick={(tool) => {
+              // For now, just log - this could be expanded to open a config dialog
+              console.log('Config clicked for tool:', tool);
+            }}
           />
         ),
       });
