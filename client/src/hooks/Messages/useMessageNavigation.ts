@@ -274,71 +274,78 @@ export default function useMessageNavigation(
     }
   }, [findNavigationTargets]);
 
-  const handleNext = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    
-    const { bottommost } = findNavigationTargets();
-    
-    if (bottommost) {
-      // Find the next message after the bottommost visible one
-      const nextIndex = bottommost.index + 1;
-      if (nextIndex < allMessages.length) {
-        const nextMessage = allMessages[nextIndex];
-        console.log('[useMessageNavigation] Down arrow clicked - going to next message after bottommost:', {
-          currentBottommostId: bottommost.messageId,
-          nextMessageId: nextMessage.messageId,
-          nextIndex
-        });
-        
-        const element = document.getElementById(nextMessage.messageId);
+  const handleNext = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+
+      const { bottommost } = findNavigationTargets();
+
+      if (bottommost) {
+        // If we are at the last message and it's already aligned to the bottom,
+        // scroll to the absolute end of the page to reveal things below the message list.
+        const isAtLastMessage = bottommost.index === allMessages.length - 1;
+        const isScrolledToBottom = Math.abs(bottommost.rect.bottom - window.innerHeight) < 5;
+
+        if (isAtLastMessage && isScrolledToBottom) {
+          console.log('[useMessageNavigation] At end of last message, scrolling to page bottom');
+          const messagesEnd = document.getElementById('messages-end');
+          if (messagesEnd) {
+            messagesEnd.scrollIntoView({
+              behavior: 'smooth',
+              block: 'end',
+              inline: 'nearest',
+            });
+          }
+          return;
+        }
+
+        console.log(
+          '[useMessageNavigation] Down arrow clicked - scrolling bottommost visible message to end:',
+          {
+            messageId: bottommost.messageId,
+            index: bottommost.index,
+          },
+        );
+
+        const element = document.getElementById(bottommost.messageId);
         if (element) {
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start',
-            inline: 'nearest'
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+            inline: 'nearest',
           });
-          
+
           // Highlight the message
           if (highlightTimeoutRef.current) {
             clearTimeout(highlightTimeoutRef.current);
           }
-          
+
           const previouslyHighlighted = document.querySelector('.message-navigation-highlight');
           if (previouslyHighlighted) {
             previouslyHighlighted.classList.remove('message-navigation-highlight');
           }
-          
+
           element.classList.add('message-navigation-highlight');
-          
+
           highlightTimeoutRef.current = setTimeout(() => {
             element.classList.remove('message-navigation-highlight');
           }, 1000);
         }
       } else {
-        // No next message - scroll to very bottom
-        console.log('[useMessageNavigation] No next message - scrolling to bottom');
+        // No visible messages, scroll to bottom
+        console.log('[useMessageNavigation] No visible messages - scrolling to bottom');
         const messagesEnd = document.getElementById('messages-end');
         if (messagesEnd) {
-          messagesEnd.scrollIntoView({ 
-            behavior: 'smooth', 
+          messagesEnd.scrollIntoView({
+            behavior: 'smooth',
             block: 'end',
-            inline: 'nearest'
+            inline: 'nearest',
           });
         }
       }
-    } else {
-      // No visible messages - scroll to bottom
-      console.log('[useMessageNavigation] No visible messages - scrolling to bottom');
-      const messagesEnd = document.getElementById('messages-end');
-      if (messagesEnd) {
-        messagesEnd.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'end',
-          inline: 'nearest'
-        });
-      }
-    }
-  }, [findNavigationTargets, allMessages]);
+    },
+    [findNavigationTargets, allMessages],
+  );
 
   // Reset current index when messages change
   useEffect(() => {
