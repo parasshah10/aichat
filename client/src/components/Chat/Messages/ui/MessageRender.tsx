@@ -213,16 +213,11 @@ const MessageRender = memo(
               </div>
               
               {/* Buttons below bubble, right-aligned */}
-              <div className="flex justify-end mt-1">
+              <div className="flex justify-end mt-0.5">
                 {hasNoChildren && (isSubmittingFamily === true || isSubmitting) ? (
                   <PlaceholderRow isCard={isCard} />
                 ) : (
-                  <SubRow classes="text-xs">
-                    <SiblingSwitch
-                      siblingIdx={siblingIdx}
-                      siblingCount={siblingCount}
-                      setSiblingIdx={setSiblingIdx}
-                    />
+                  <SubRow classes="text-xs justify-end gap-0">
                     <HoverButtons
                       index={index}
                       isEditing={edit}
@@ -236,6 +231,11 @@ const MessageRender = memo(
                       latestMessage={latestMessage}
                       handleFeedback={handleFeedback}
                       isLast={isLast}
+                    />
+                    <SiblingSwitch
+                      siblingIdx={siblingIdx}
+                      siblingCount={siblingCount}
+                      setSiblingIdx={setSiblingIdx}
                     />
                   </SubRow>
                 )}
@@ -277,7 +277,7 @@ const MessageRender = memo(
               {hasNoChildren && (isSubmittingFamily === true || isSubmitting) ? (
                 <PlaceholderRow isCard={isCard} />
               ) : (
-                <SubRow classes="text-xs">
+                <SubRow classes="text-xs gap-0">
                   <SiblingSwitch
                     siblingIdx={siblingIdx}
                     siblingCount={siblingCount}
