@@ -134,18 +134,16 @@ export default function Conversation({
   return (
     <div
       className={cn(
-        'group relative flex h-12 w-full items-center rounded-lg transition-colors duration-200 md:h-9',
+        'group relative flex h-9 w-full items-center rounded-lg transition-colors duration-200',
         isActiveConvo ? 'bg-surface-active-alt' : 'hover:bg-surface-active-alt',
       )}
-      role="listitem"
-      tabIndex={0}
+      role="button"
+      tabIndex={isSmallScreen ? -1 : 0}
       onClick={(e) => {
         if (renaming) {
           return;
         }
-        if (e.button === 0) {
-          handleNavigation(e.ctrlKey || e.metaKey);
-        }
+        handleNavigation(e.ctrlKey || e.metaKey);
       }}
       onKeyDown={(e) => {
         if (renaming) {
@@ -155,7 +153,10 @@ export default function Conversation({
           handleNavigation(false);
         }
       }}
-      style={{ cursor: renaming ? 'default' : 'pointer' }}
+      style={{ 
+        touchAction: 'manipulation',
+        cursor: renaming ? 'default' : 'pointer'
+      }}
       data-testid="convo-item"
     >
       {renaming ? (
@@ -180,6 +181,8 @@ export default function Conversation({
           'mr-1 flex origin-left',
           isPopoverActive || isActiveConvo
             ? 'pointer-events-auto max-w-[28px] scale-x-100 opacity-100'
+            : isSmallScreen
+            ? 'pointer-events-none max-w-0 scale-x-0 opacity-0'
             : 'pointer-events-none max-w-0 scale-x-0 opacity-0 group-focus-within:pointer-events-auto group-focus-within:max-w-[28px] group-focus-within:scale-x-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:max-w-[28px] group-hover:scale-x-100 group-hover:opacity-100',
         )}
         aria-hidden={!(isPopoverActive || isActiveConvo)}
