@@ -138,11 +138,11 @@ async function encodeAndFormat(req, files, endpoint, mode) {
         // Error handling code
       }
     } else if (source !== FileSources.local && base64Only.has(endpoint)) {
-      const [_file, imageURL] = await preparePayload(req, file);
+      const [_file, imageURL] = await preparePayload(req, file, endpoint);
       promises.push([_file, await fetchImageToBase64(imageURL)]);
       continue;
     }
-    promises.push(preparePayload(req, file));
+    promises.push(preparePayload(req, file, endpoint));
   }
 
   if (result.text) {

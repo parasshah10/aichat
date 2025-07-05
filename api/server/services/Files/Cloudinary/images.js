@@ -179,15 +179,39 @@ async function uploadImageToCloudinary({ req, file, file_id, endpoint, resolutio
  *
  * @param {Object} req - The request object.
  * @param {MongoFile} file - The file object.
- * @returns {Promise<[MongoFile, string]>} - A promise that resolves to an array of results from updateFile and base64 encoding.
+ * @param {string} [endpointType] - The endpoint type (e.g., 'openAI', 'google', etc.)
+ * @returns {Promise<[MongoFile, string]>} - A promise that resolves to an array of results from updateFile and either URL or base64 encoding.
  */
-async function prepareCloudinaryImage(req, file) {
+async function prepareCloudinaryImage(req, file, endpointType) {
   try {
     const promises = [];
     promises.push(updateFile({ file_id: file.file_id }));
     
-    // For Cloudinary, fetch the image and convert to base64
-    // This is the most reliable method for all image types
+    // Use the passed endpointType parameter, fallback to request body
+    const endpoint = endpointType || req.body?.endpoint || req.query?.endpoint || req.headers?.endpoint;
+    
+    // Endpoints that support direct URLs (more efficient)
+    const urlSupportedEndpoints = new Set([
+      'openAI',
+      'azureOpenAI',
+      'assistants',
+      'azureAssistants',
+      'agents',
+      'custom',
+      'gptPlugins'
+    ]);
+    
+    // For endpoints that support URLs, return the Cloudinary URL directly
+    // This is much more efficient as it avoids unnecessary downloads and base64 conversion
+    if (endpoint && urlSupportedEndpoints.has(endpoint)) {
+      logger.debug(`[prepareCloudinaryImage] Using direct Cloudinary URL for ${endpoint} endpoint: ${file.filepath}`);
+      promises.push(Promise.resolve(file.filepath));
+      return await Promise.all(promises);
+    }
+    
+    // For endpoints that require base64 (Google, Anthropic, Bedrock, etc.)
+    // fetch the image and convert to base64
+    logger.debug(`[prepareCloudinaryImage] Converting to base64 for ${endpoint || 'unknown'} endpoint`);
     const response = await axios({
       url: file.filepath,
       responseType: 'arraybuffer',
