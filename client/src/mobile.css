@@ -110,6 +110,22 @@
   {
     visibility: hidden;
   }
+
+  /* Mobile chat input optimizations */
+  form[class*="mx-auto flex w-full flex-row"] {
+    margin-bottom: 0 !important;
+  }
+
+  /* Reduce padding in chat input container */
+  div[class*="rounded-t-3xl border pb-2"] {
+    padding-bottom: 0.125rem !important;
+  }
+
+  /* Optimize button container spacing */
+  div[class*="items-between flex gap-2 pb-1"] {
+    gap: 0.25rem !important;
+    padding-bottom: 0.125rem !important;
+  }
 }
 
 .hide-scrollbar {

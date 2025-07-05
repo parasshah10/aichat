@@ -228,7 +228,7 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
           !isSubmitting &&
           conversation?.messages?.length === 0
           ? 'transition-all duration-200 sm:mb-28'
-          : 'sm:mb-4',
+          : 'sm:mb-0',
       )}
     >
       <div className="relative flex h-full flex-1 items-stretch md:flex-col">
@@ -311,7 +311,7 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
             )}
             <div
               className={cn(
-                'items-between flex gap-2 pb-1',
+                'items-between flex gap-2 pb-1 sm:pb-0.5 sm:gap-1',
                 isRTL ? 'flex-row-reverse' : 'flex-row',
               )}
             >
