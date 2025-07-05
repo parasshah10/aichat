@@ -1,76 +1,87 @@
-# Dockerfile.build
-FROM node:20-alpine AS builder
+# Dockerfile.build - Matches original LibreChat Dockerfile + HF compatibility + Meilisearch
+# v0.7.8 based
 
-# Install build dependencies
-RUN apk add --no-cache python3 py3-pip make g++ git
+FROM node:20-alpine AS node
 
-WORKDIR /app
+# Install jemalloc (from original)
+RUN apk add --no-cache jemalloc
+RUN apk add --no-cache python3 py3-pip uv
 
-# Copy package files for caching
-COPY package*.json ./
-COPY patches ./patches
-COPY api/package*.json ./api/
-COPY client/package*.json ./client/
-COPY packages/data-provider/package*.json ./packages/data-provider/
-COPY packages/data-schemas/package*.json ./packages/data-schemas/
-COPY packages/api/package*.json ./packages/api/
+# Install additional deps we need
+RUN apk add --no-cache curl bash make g++
 
-# Install dependencies (this will apply your patches via postinstall)
-RUN npm install --no-audit
+# Set environment variable to use jemalloc
+ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 
-# Copy everything else
-COPY . .
+# Add `uv` for extended MCP support (from original)
+COPY --from=ghcr.io/astral-sh/uv:0.6.13 /uv /uvx /bin/
+RUN uv --version
 
-# Build frontend
-RUN NODE_OPTIONS="--max-old-space-size=2048" npm run frontend && \
-    npm prune --production && \
-    npm cache clean --force
-
-# Production stage
-FROM node:20-alpine
-
-# Install runtime dependencies including Meilisearch
-RUN apk add --no-cache curl bash && \
-    curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.12.3/meilisearch-linux-amd64 \
+# Download Meilisearch (our addition)
+RUN curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.12.3/meilisearch-linux-amd64 \
     -o /usr/local/bin/meilisearch && \
     chmod +x /usr/local/bin/meilisearch
 
+# Create app directory (keep original structure)
+RUN mkdir -p /app && chown node:node /app
 WORKDIR /app
 
-# Copy built app from builder
-COPY --from=builder /app ./
+# Copy as node user first (like original)
+USER node
+COPY --chown=node:node . .
 
-# Create directories with correct permissions for HF (user 1000)
-RUN mkdir -p /home/user/meili_data && \
-    chown -R 1000:1000 /app /home/user
+# Run the exact same build process as original
+RUN \
+    # Allow mounting of these files, which have no default
+    touch .env ; \
+    # Create directories for the volumes to inherit the correct permissions
+    mkdir -p /app/client/public/images /app/api/logs ; \
+    npm config set fetch-retry-maxtimeout 600000 ; \
+    npm config set fetch-retries 5 ; \
+    npm config set fetch-retry-mintimeout 15000 ; \
+    npm install --no-audit; \
+    # React client build
+    NODE_OPTIONS="--max-old-space-size=2048" npm run frontend; \
+    npm prune --production; \
+    npm cache clean --force
 
-# Create startup script
-RUN cat > /home/user/start.sh << 'EOF'
+RUN mkdir -p /app/client/public/images /app/api/logs
+
+# Now we need to add our modifications for HF
+USER root
+
+# Create Meilisearch data directory
+RUN mkdir -p /home/user/meili_data
+
+# Create startup script for both services
+RUN cat > /app/start.sh << 'EOF'
 #!/bin/bash
 echo "Starting Meilisearch..."
 /usr/local/bin/meilisearch \
     --db-path /home/user/meili_data \
     --http-addr 127.0.0.1:7700 \
     --no-analytics \
-    --master-key "${MEILI_MASTER_KEY:-defaultDevKey}" &
+    --master-key "${MEILI_MASTER_KEY:-defaultDevKey123}" &
 
-echo "Waiting for Meilisearch..."
+echo "Waiting for Meilisearch to start..."
 sleep 5
 
 echo "Starting LibreChat..."
-cd /app
 export MEILI_HOST=http://127.0.0.1:7700
 exec npm run backend
 EOF
 
-RUN chmod +x /home/user/start.sh
+RUN chmod +x /app/start.sh
 
-# Switch to HF user
+# Change ownership to user 1000 for Hugging Face
+RUN chown -R 1000:1000 /app /home/user
+
+# Switch to user 1000 (HF requirement)
 USER 1000
 
+# Node API setup (from original)
 EXPOSE 3080
-
 ENV HOST=0.0.0.0
-ENV PORT=3080
 
-CMD ["/home/user/start.sh"]
+# Use our startup script instead of direct npm command
+CMD ["/app/start.sh"]
