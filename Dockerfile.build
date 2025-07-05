@@ -1,0 +1,76 @@
+# Dockerfile.build
+FROM node:20-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache python3 py3-pip make g++ git
+
+WORKDIR /app
+
+# Copy package files for caching
+COPY package*.json ./
+COPY patches ./patches
+COPY api/package*.json ./api/
+COPY client/package*.json ./client/
+COPY packages/data-provider/package*.json ./packages/data-provider/
+COPY packages/data-schemas/package*.json ./packages/data-schemas/
+COPY packages/api/package*.json ./packages/api/
+
+# Install dependencies (this will apply your patches via postinstall)
+RUN npm install --no-audit
+
+# Copy everything else
+COPY . .
+
+# Build frontend
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run frontend && \
+    npm prune --production && \
+    npm cache clean --force
+
+# Production stage
+FROM node:20-alpine
+
+# Install runtime dependencies including Meilisearch
+RUN apk add --no-cache curl bash && \
+    curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.12.3/meilisearch-linux-amd64 \
+    -o /usr/local/bin/meilisearch && \
+    chmod +x /usr/local/bin/meilisearch
+
+WORKDIR /app
+
+# Copy built app from builder
+COPY --from=builder /app ./
+
+# Create directories with correct permissions for HF (user 1000)
+RUN mkdir -p /home/user/meili_data && \
+    chown -R 1000:1000 /app /home/user
+
+# Create startup script
+RUN cat > /home/user/start.sh << 'EOF'
+#!/bin/bash
+echo "Starting Meilisearch..."
+/usr/local/bin/meilisearch \
+    --db-path /home/user/meili_data \
+    --http-addr 127.0.0.1:7700 \
+    --no-analytics \
+    --master-key "${MEILI_MASTER_KEY:-defaultDevKey}" &
+
+echo "Waiting for Meilisearch..."
+sleep 5
+
+echo "Starting LibreChat..."
+cd /app
+export MEILI_HOST=http://127.0.0.1:7700
+exec npm run backend
+EOF
+
+RUN chmod +x /home/user/start.sh
+
+# Switch to HF user
+USER 1000
+
+EXPOSE 3080
+
+ENV HOST=0.0.0.0
+ENV PORT=3080
+
+CMD ["/home/user/start.sh"]
