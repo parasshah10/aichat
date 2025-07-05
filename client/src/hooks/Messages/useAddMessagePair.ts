@@ -1,7 +1,7 @@
 import { v4 } from 'uuid';
 import { useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { dataService, QueryKeys } from 'librechat-data-provider';
+import { dataService, QueryKeys, alternateName } from 'librechat-data-provider';
 import { useChatContext } from '~/Providers';
 import { useAuthContext } from '~/hooks/AuthContext';
 import type { TMessage } from 'librechat-data-provider';
@@ -59,7 +59,7 @@ export default function useAddMessagePair() {
         conversationId: conversation.conversationId,
         parentMessageId: userMessageId,
         isCreatedByUser: false,
-        sender: conversation.title || 'AI',
+        sender: alternateName[conversation.endpoint || 'openAI'] || conversation.endpoint || 'AI',
         text: aiMessageId, // Just the message ID as requested
         endpoint: conversation.endpoint || 'openAI',
         model: conversation.model || 'gpt-3.5-turbo',
