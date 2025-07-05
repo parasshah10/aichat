@@ -16,6 +16,7 @@ import {
   useQueryParams,
   useSubmitMessage,
   useFocusChatEffect,
+  useAddMessagePair,
 } from '~/hooks';
 import { mainTextareaId, BadgeItem } from '~/common';
 import AttachFileChat from './Files/AttachFileChat';
@@ -130,6 +131,7 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   });
 
   const { submitMessage, submitPrompt } = useSubmitMessage();
+  const { addMessagePair } = useAddMessagePair();
 
   const handleKeyUp = useHandleKeyUp({
     index,
@@ -151,6 +153,22 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   });
 
   useQueryParams({ textAreaRef });
+
+  // Handle Ctrl+Shift+Enter message pair creation
+  useEffect(() => {
+    const handleAddMessagePair = (event: CustomEvent) => {
+      const text = event.detail?.text;
+      if (text && text.trim()) {
+        addMessagePair(text.trim());
+        methods.setValue('text', ''); // Clear the textarea
+      }
+    };
+
+    window.addEventListener('addMessagePair', handleAddMessagePair as EventListener);
+    return () => {
+      window.removeEventListener('addMessagePair', handleAddMessagePair as EventListener);
+    };
+  }, [addMessagePair, methods]);
 
   const { ref, ...registerProps } = methods.register('text', {
     required: true,

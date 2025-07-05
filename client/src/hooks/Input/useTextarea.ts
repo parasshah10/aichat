@@ -154,9 +154,21 @@ export default function useTextarea({
 
       const isNonShiftEnter = e.key === 'Enter' && !e.shiftKey;
       const isCtrlEnter = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+      const isCtrlShiftEnter = e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.shiftKey;
 
       // NOTE: isComposing and e.key behave differently in Safari compared to other browsers, forcing us to use e.keyCode instead
       const isComposingInput = isComposing.current || e.key === 'Process' || e.keyCode === 229;
+
+      // Handle Ctrl+Shift+Enter for adding message pair
+      if (isCtrlShiftEnter && !isComposingInput) {
+        e.preventDefault();
+        // Trigger custom event for message pair creation
+        const event = new CustomEvent('addMessagePair', {
+          detail: { text: textAreaRef.current?.value || '' }
+        });
+        window.dispatchEvent(event);
+        return;
+      }
 
       if (isNonShiftEnter && filesLoading) {
         e.preventDefault();

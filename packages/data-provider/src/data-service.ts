@@ -612,6 +612,16 @@ export function updateMessage(payload: t.TUpdateMessageRequest): Promise<unknown
   return request.put(endpoints.messages({ conversationId, messageId }), { text });
 }
 
+export function createMessage(payload: s.TMessage): Promise<s.TMessage> {
+  const { conversationId, ...messageData } = payload;
+  if (!conversationId) {
+    throw new Error('conversationId is required');
+  }
+
+  // Include conversationId in the message data as well
+  return request.post(endpoints.messages({ conversationId }), { ...messageData, conversationId });
+}
+
 export function updateMessageContent(payload: t.TUpdateMessageContent): Promise<unknown> {
   const { conversationId, messageId, index, text } = payload;
   if (!conversationId) {

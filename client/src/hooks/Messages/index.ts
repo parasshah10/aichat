@@ -2,6 +2,7 @@ export { default as useAvatar } from './useAvatar';
 export { default as useProgress } from './useProgress';
 export { default as useAttachments } from './useAttachments';
 export { default as useSubmitMessage } from './useSubmitMessage';
+export { default as useAddMessagePair } from './useAddMessagePair';
 export { default as useMessageActions } from './useMessageActions';
 export { default as useMessageProcess } from './useMessageProcess';
 export { default as useMessageHelpers } from './useMessageHelpers';
