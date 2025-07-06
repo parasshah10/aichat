@@ -40,17 +40,17 @@ export default function Header() {
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
 
   if (isSmallScreen) {
-    // Compact mobile layout: hamburger menu (left) + controls (center) + new chat (right)
+    // Mobile layout: hamburger (left) + model selector + action buttons + new chat (right)
     return (
-      <div className="sticky top-0 z-10 flex h-10 w-full items-center justify-between bg-white px-1 py-1 text-text-primary dark:bg-gray-800">
+      <div className="sticky top-0 z-10 flex h-12 w-full items-center bg-white px-2 py-1 text-text-primary dark:bg-gray-800">
         {/* Left: Hamburger menu */}
         <div className="flex items-center">
           <Button
             size="icon"
-            variant="outline"
+            variant="ghost"
             data-testid="mobile-open-sidebar-button"
             aria-label="Open sidebar"
-            className="h-8 w-8 rounded-lg border border-border-light bg-surface-secondary p-1 hover:bg-surface-hover"
+            className="h-10 w-10 rounded-lg p-0.5 hover:bg-surface-hover"
             onClick={() =>
               setNavVisible((prev) => {
                 localStorage.setItem('navVisible', JSON.stringify(!prev));
@@ -59,8 +59,8 @@ export default function Header() {
             }
           >
             <svg
-              width="16"
-              height="16"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -75,10 +75,14 @@ export default function Header() {
           </Button>
         </div>
         
-        {/* Center: Compact controls */}
-        <div className="hide-scrollbar flex flex-1 items-center justify-center gap-1 overflow-x-auto px-2">
-          <div className="flex items-center gap-1 text-xs">
-            <ModelSelector startupConfig={startupConfig} />
+        {/* Model Selector - positioned after hamburger */}
+        <div className="ml-0.5 flex-shrink-0 min-w-0">
+          <ModelSelector startupConfig={startupConfig} />
+        </div>
+        
+        {/* Center: Action buttons */}
+        <div className="hide-scrollbar ml-2 flex flex-1 items-center justify-center gap-1 overflow-x-auto">
+          <div className="flex items-center gap-1">
             {interfaceConfig.presets === true && interfaceConfig.modelSelect && <PresetsMenu />}
             {hasAccessToMultiConvo === true && <AddMultiConvo />}
             <ExportAndShareMenu
@@ -89,13 +93,13 @@ export default function Header() {
         </div>
         
         {/* Right: New chat button */}
-        <div className="flex items-center">
+        <div className="ml-2 flex items-center flex-shrink-0">
           <Button
             size="icon"
-            variant="outline"
+            variant="ghost"
             data-testid="mobile-new-chat-button"
             aria-label="New chat"
-            className="h-8 w-8 rounded-lg border border-border-light bg-surface-secondary p-1 hover:bg-surface-hover"
+            className="h-10 w-10 rounded-lg p-2 hover:bg-surface-hover"
             onClick={(e) => {
               if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
                 window.open('/c/new', '_blank');
@@ -110,8 +114,8 @@ export default function Header() {
             }}
           >
             <svg
-              width="16"
-              height="16"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -119,7 +123,7 @@ export default function Header() {
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"
-                d="M16.7929 2.79289C18.0118 1.57394 19.9882 1.57394 21.2071 2.79289C22.4261 4.01184 22.4261 5.98815 21.2071 7.20711L12.7071 15.7071C12.5196 15.8946 12.2652 16 12 16H9C8.44772 16 8 15.5523 8 15V12C8 11.7348 8.10536 11.4804 8.29289 11.2929L16.7929 2.79289ZM19.7929 4.20711C19.355 3.7692 18.645 3.7692 18.2071 4.2071L10 12.4142V14H11.5858L19.7929 5.79289C20.2308 5.35499 20.2308 4.64501 19.7929 4.20711ZM6 5C5.44772 5 5 5.44771 5 6V18C5 18.5523 5.44772 19 6 19H18C18.5523 19 19 18.5523 19 18V14C19 13.4477 19.4477 13 20 13C20.5523 13 21 13.4477 21 14V18C21 19.6569 19.6569 21 18 21H6C4.34315 21 3 19.6569 3 18V6C3 4.34314 4.34315 3 6 3H10C10.5523 3 11 3.44771 11 4C11 4.55228 10.5523 5 10 5H6Z"
+                d="M16.7929 2.79289C18.0118 1.57394 19.9882 1.57394 21.2071 2.79289C22.4261 4.01184 22.4261 5.98815 21.2071 7.20711L12.7071 15.7071C12.5196 15.8946 12.2652 16 12 16H9C8.44772 16 8 15.5523 8 15V12C8 11.7348 8.10536 11.4804 8.29289 11.2929L16.7929 2.79289ZM19.7929 4.20711C19.355 3.7692 18.645 3.7692 18.2071 4.2071L10 12.4142V14H11.5858L19.7929 5.79289C20.2308 5.35499 20.2308 4.64501 19.7929 4.20711ZM6 5C5.44772 5 5 5.44771 5 6V18C5 18.5523 5.44772 19 6 19H18C18.5523 19 19 18.5523 19 18V14C19 13.4477 18.5523 13 18 13C17.4477 13 17 13.4477 17 14V17H7V7H14C14.5523 7 15 6.55228 15 6C15 5.44772 14.5523 5 14 5H6Z"
                 fill="currentColor"
               />
             </svg>

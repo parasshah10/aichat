@@ -52,11 +52,11 @@ function ModelSelectorContent() {
 
   const trigger = (
     <button
-      className="my-1 flex h-10 w-full max-w-[70vw] items-center justify-center gap-2 rounded-xl border border-border-light bg-surface-secondary px-3 py-2 text-sm text-text-primary hover:bg-surface-tertiary"
+      className="my-1 flex h-10 w-auto min-w-[120px] max-w-[200px] items-center justify-start gap-2 rounded-xl bg-transparent px-0.5 py-2 text-base text-text-primary hover:bg-surface-tertiary"
       aria-label={localize('com_ui_select_model')}
     >
       {selectedIcon && React.isValidElement(selectedIcon) && (
-        <div className="flex flex-shrink-0 items-center justify-center overflow-hidden">
+        <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden">
           {selectedIcon}
         </div>
       )}
@@ -65,7 +65,7 @@ function ModelSelectorContent() {
   );
 
   return (
-    <div className="relative flex w-full max-w-md flex-col items-center gap-2">
+    <div className="relative flex w-full max-w-none flex-col items-start gap-2">
       <Menu
         values={selectedValues}
         onValuesChange={(values: Record<string, any>) => {
