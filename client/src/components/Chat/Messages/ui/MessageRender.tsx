@@ -110,7 +110,7 @@ const MessageRender = memo(
     const baseClasses = {
       common: 'group mx-auto flex flex-1 gap-3 transition-all duration-300 transform-gpu ',
       card: 'relative w-full gap-1 rounded-lg border border-border-medium bg-surface-primary-alt p-2 md:w-1/2 md:gap-3 md:p-4',
-      chat: maximizeChatSpace
+      chat: maximizeChatSpace || !msg?.isCreatedByUser
         ? 'w-full max-w-full md:px-5 lg:px-1 xl:px-5'
         : 'md:max-w-[47rem] xl:max-w-[55rem]',
     };
@@ -166,8 +166,8 @@ const MessageRender = memo(
 
         <div
           className={cn(
-            'relative flex w-11/12 flex-col',
-            msg.isCreatedByUser ? 'user-turn' : 'agent-turn',
+            'relative flex flex-col',
+            msg.isCreatedByUser ? 'w-11/12 user-turn' : 'w-full agent-turn',
             chatGPTClasses.userMessageContainer,
           )}
         >

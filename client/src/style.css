@@ -827,6 +827,33 @@ pre {
   );
 }
 
+/* Remove prose width constraints for AI messages to use full width like ChatGPT */
+.agent-turn .prose {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.agent-turn .markdown.prose {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.agent-turn .message-content {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Force AI message containers to use full width */
+.agent-turn {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Override the w-11/12 class for AI messages */
+.message-render .agent-turn {
+  width: 100% !important;
+}
+
 .prose :where([class~='lead']):not(:where([class~='not-prose'] *)) {
   color: var(--tw-prose-lead);
   font-size: 1.25em;
