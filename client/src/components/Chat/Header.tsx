@@ -76,7 +76,7 @@ export default function Header() {
         </div>
         
         {/* Model Selector - positioned after hamburger */}
-        <div className="ml-0.5 flex-shrink-0 min-w-0">
+        <div className="ml-0.5 flex-shrink-0">
           <ModelSelector startupConfig={startupConfig} />
         </div>
         
