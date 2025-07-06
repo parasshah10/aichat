@@ -2,7 +2,7 @@
 <html lang="en-US">
   <head>
     <meta charset="utf-8" />
-    <meta name="theme-color" content="#212121" id="theme-color-meta" />
+    <meta name="theme-color" content="#000000" id="theme-color-meta" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -40,7 +40,7 @@
       // Update theme-color meta tag for iOS status bar
       const themeColorMeta = document.querySelector('#theme-color-meta');
       if (themeColorMeta) {
-        themeColorMeta.content = backgroundColor === '#0d0d0d' ? '#212121' : '#ffffff';
+        themeColorMeta.content = backgroundColor === '#0d0d0d' ? '#000000' : '#ffffff';
       }
 
       loadingContainerStyle.innerHTML = `
