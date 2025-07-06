@@ -43,7 +43,7 @@ export default function Header() {
   if (isSmallScreen) {
     // Mobile layout: hamburger (left) + model selector + action buttons + new chat (right)
     return (
-      <div className="sticky top-0 z-10 flex h-12 w-full items-center bg-white px-2 py-1 text-text-primary dark:bg-gray-800">
+      <div className="sticky top-0 z-10 flex h-12 w-full items-center bg-white px-2 py-1 text-text-primary dark:bg-black">
         {/* Left: Hamburger menu */}
         <div className="flex items-center">
           <Button
@@ -124,7 +124,7 @@ export default function Header() {
 
   // Desktop layout (unchanged)
   return (
-    <div className="sticky top-0 z-10 flex h-14 w-full items-center justify-between bg-white p-2 font-semibold text-text-primary dark:bg-gray-800">
+    <div className="sticky top-0 z-10 flex h-14 w-full items-center justify-between bg-white p-2 font-semibold text-text-primary dark:bg-black">
       <div className="hide-scrollbar flex w-full items-center justify-between gap-2 overflow-x-auto">
         <div className="mx-1 flex items-center gap-2">
           <div

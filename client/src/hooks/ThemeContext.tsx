@@ -40,7 +40,7 @@ export const ThemeProvider = ({ initialTheme, children }) => {
     // Update theme-color meta tag for iOS status bar
     const themeColorMeta = document.querySelector('#theme-color-meta') as HTMLMetaElement;
     if (themeColorMeta) {
-      themeColorMeta.content = darkMode ? '#212121' : '#ffffff';
+      themeColorMeta.content = darkMode ? '#000000' : '#ffffff';
     }
 
     localStorage.setItem('color-theme', rawTheme);
